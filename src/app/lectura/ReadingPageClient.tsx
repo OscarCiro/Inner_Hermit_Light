@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { interpretTarotReading, InterpretTarotReadingOutput } from '@/ai/flows/interpret-tarot-reading';
+import { interpretTarotReading, InterpretTarotReadingOutput, InterpretTarotReadingInput } from '@/ai/flows/interpret-tarot-reading';
 import PageWrapper from '@/components/layout/PageWrapper';
 import TarotCardDisplay from '@/components/tarot/TarotCardDisplay';
 import { Button } from '@/components/ui/button';
@@ -14,19 +15,37 @@ function ReadingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const query = searchParams.get('q') || '';
+  const numCardsParam = searchParams.get('numCards') || '3';
+  const cardCount = parseInt(numCardsParam, 10);
 
   const [reading, setReading] = useState<InterpretTarotReadingOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [revealedCards, setRevealedCards] = useState({ past: false, present: false, future: false });
+  const [revealedCards, setRevealedCards] = useState<boolean[]>([]);
 
   useEffect(() => {
+    // Initialize revealedCards array based on cardCount from URL
+    // This ensures it's ready before the reading data arrives
+    const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
+    setRevealedCards(Array(currentCardCount).fill(false));
+
     const fetchReading = async () => {
       setLoading(true);
       setError(null);
       try {
-        const result = await interpretTarotReading({ query });
-        setReading(result);
+        const input: InterpretTarotReadingInput = { 
+          query, 
+          numCards: numCardsParam as '3' | '5' | '7' // Type assertion based on form validation
+        };
+        const result = await interpretTarotReading(input);
+
+        if (!result.cards || result.cards.length !== currentCardCount) {
+          console.error("Card count mismatch or missing cards", { expected: currentCardCount, actual: result.cards?.length });
+          setError("La lectura generada no contiene el número esperado de cartas. Por favor, intenta de nuevo.");
+          setReading(null);
+        } else {
+          setReading(result);
+        }
       } catch (err) {
         console.error("Error fetching tarot reading:", err);
         setError("Hubo un error al obtener tu lectura. Por favor, intenta de nuevo.");
@@ -36,13 +55,19 @@ function ReadingContent() {
     };
 
     fetchReading();
-  }, [query]);
+  }, [query, numCardsParam, searchParams]); // searchParams in dependency array for numCards changes
 
-  const handleRevealCard = (cardKey: 'past' | 'present' | 'future') => {
-    setRevealedCards(prev => ({ ...prev, [cardKey]: true }));
+  const handleRevealCard = (cardIndex: number) => {
+    setRevealedCards(prev => {
+      const newRevealed = [...prev];
+      if (cardIndex < newRevealed.length) {
+        newRevealed[cardIndex] = true;
+      }
+      return newRevealed;
+    });
   };
 
-  const allCardsRevealed = revealedCards.past && revealedCards.present && revealedCards.future;
+  const allCardsRevealed = reading && reading.cards && revealedCards.length === reading.cards.length && revealedCards.every(Boolean);
 
   if (loading) {
     return (
@@ -66,16 +91,25 @@ function ReadingContent() {
     );
   }
 
-  if (!reading) {
+  if (!reading || !reading.cards || reading.cards.length === 0) {
     return (
       <PageWrapper>
-        <p className="text-xl">No se pudo obtener la lectura.</p>
+        <p className="text-xl">No se pudo obtener la lectura o la lectura está vacía.</p>
         <Button onClick={() => router.push('/consulta')} className="mt-4">
           Nueva Consulta
         </Button>
       </PageWrapper>
     );
   }
+  
+  // Determine grid columns based on number of cards
+  let gridColsClass = "md:grid-cols-3"; // Default for 3 cards
+  if (reading.cards.length === 5) {
+    gridColsClass = "md:grid-cols-3 lg:grid-cols-5"; // Adjust for 5 cards to fit better on larger screens
+  } else if (reading.cards.length === 7) {
+     gridColsClass = "md:grid-cols-4 lg:grid-cols-7"; // Adjust for 7 cards
+  }
+
 
   return (
     <PageWrapper className="bg-card/30 backdrop-blur-md" style={{
@@ -90,25 +124,16 @@ function ReadingContent() {
         <p className="text-lg text-foreground/80">Las cartas han hablado. Escucha su mensaje.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-10 justify-items-center">
-        <TarotCardDisplay
-          cardName={reading.pastCard}
-          position="Pasado"
-          isRevealed={revealedCards.past}
-          onReveal={() => handleRevealCard('past')}
-        />
-        <TarotCardDisplay
-          cardName={reading.presentCard}
-          position="Presente"
-          isRevealed={revealedCards.present}
-          onReveal={() => handleRevealCard('present')}
-        />
-        <TarotCardDisplay
-          cardName={reading.futureCard}
-          position="Futuro"
-          isRevealed={revealedCards.future}
-          onReveal={() => handleRevealCard('future')}
-        />
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridColsClass} gap-4 md:gap-6 mb-10 justify-items-center`}>
+        {reading.cards.map((card, index) => (
+          <TarotCardDisplay
+            key={index}
+            cardName={card.name}
+            position={card.position}
+            isRevealed={revealedCards[index] || false}
+            onReveal={() => handleRevealCard(index)}
+          />
+        ))}
       </div>
 
       {allCardsRevealed && (
