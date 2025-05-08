@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -16,13 +17,13 @@ interface TarotCardDisplayProps {
 }
 
 const getCardImageSrc = (cardName: string): string => {
-  // Converts "El Sol" to "el-sol.jpg", "The Fool" to "the-fool.jpg" etc.
-  // Assumes images are JPEGs. Change extension if needed (e.g. .png)
-  const imageName = cardName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.jpg';
+  // Converts "El Sol" to "el-sol.png", "The Fool" to "the-fool.png" etc.
+  // Assumes images are PNGs.
+  const imageName = cardName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.png';
   return `/tarot-cards/${imageName}`;
 };
 
-const cardBackImageSrc = '/tarot-cards/card-back.jpg';
+const cardBackImageSrc = '/tarot-cards/card-back.png'; // Changed to .png
 
 const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
   cardName,
@@ -65,6 +66,11 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
               className="rounded-md object-cover opacity-80 group-hover:opacity-100 transition-opacity"
               data-ai-hint="tarot card back"
               priority // Preload card backs as they are common
+              onError={(e) => {
+                // Fallback for card back if missing
+                e.currentTarget.src = '/tarot-cards/default-card.png'; // Default fallback
+                e.currentTarget.alt = `Imagen no disponible para el dorso de la carta`;
+              }}
             />
             <Button variant="ghost" size="sm" className="mt-4 text-xs text-foreground/70 hover:text-primary">
               <Eye className="mr-1 h-3 w-3"/> Revelar
@@ -81,7 +87,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
               data-ai-hint={cardName.toLowerCase().split(" ").slice(0,2).join(" ")} // e.g. "el sol"
               onError={(e) => {
                 // Fallback if a specific card image is missing
-                e.currentTarget.src = '/tarot-cards/default-card.jpg'; // Provide a default card face
+                e.currentTarget.src = '/tarot-cards/default-card.png'; // Changed to .png
                 e.currentTarget.alt = `Imagen no disponible para ${cardName}`;
               }}
             />
