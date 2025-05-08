@@ -15,6 +15,15 @@ interface TarotCardDisplayProps {
   isRevealed?: boolean;
 }
 
+const getCardImageSrc = (cardName: string): string => {
+  // Converts "El Sol" to "el-sol.jpg", "The Fool" to "the-fool.jpg" etc.
+  // Assumes images are JPEGs. Change extension if needed (e.g. .png)
+  const imageName = cardName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.jpg';
+  return `/tarot-cards/${imageName}`;
+};
+
+const cardBackImageSrc = '/tarot-cards/card-back.jpg';
+
 const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
   cardName,
   position,
@@ -25,8 +34,6 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
   const [internalRevealed, setInternalRevealed] = useState(initiallyRevealed);
   const isRevealed = controlledRevealed !== undefined ? controlledRevealed : internalRevealed;
 
-  const cardBackSeed = position.toLowerCase().replace(/\s+/g, '-');
-
   const handleReveal = () => {
     if (onReveal) {
       onReveal();
@@ -34,6 +41,8 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
       setInternalRevealed(true);
     }
   };
+
+  const revealedImageSrc = getCardImageSrc(cardName);
 
   return (
     <Card className={cn(
@@ -49,28 +58,35 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
         {!isRevealed ? (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <Image
-              src={`https://picsum.photos/seed/${cardBackSeed}/200/300`}
+              src={cardBackImageSrc}
               alt={`Carta ${position} - Dorso`}
               width={100}
               height={150}
               className="rounded-md object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-              data-ai-hint="tarot card back art nouveau"
+              data-ai-hint="tarot card back"
+              priority // Preload card backs as they are common
             />
             <Button variant="ghost" size="sm" className="mt-4 text-xs text-foreground/70 hover:text-primary">
               <Eye className="mr-1 h-3 w-3"/> Revelar
             </Button>
           </div>
         ) : (
-          <div className="text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor" className="w-16 h-16 mx-auto mb-3 text-accent opacity-70">
-              <circle cx="32" cy="14" r="8"/>
-              <circle cx="32" cy="50" r="8"/>
-              <circle cx="14" cy="32" r="8"/>
-              <circle cx="50" cy="32" r="8"/>
-              <circle cx="32" cy="32" r="10" opacity="0.4"/>
-            </svg>
-            <p className="text-xl font-bold font-serif text-accent">{cardName}</p>
-            <p className="text-xs text-muted-foreground mt-1">(Posición Normal)</p>
+          <div className="text-center w-full h-full flex flex-col items-center justify-center">
+            <Image
+              src={revealedImageSrc}
+              alt={`Carta ${cardName} - ${position}`}
+              width={120} 
+              height={180}
+              className="rounded-md object-contain mx-auto mb-2" // object-contain to prevent cropping
+              data-ai-hint={cardName.toLowerCase().split(" ").slice(0,2).join(" ")} // e.g. "el sol"
+              onError={(e) => {
+                // Fallback if a specific card image is missing
+                e.currentTarget.src = '/tarot-cards/default-card.jpg'; // Provide a default card face
+                e.currentTarget.alt = `Imagen no disponible para ${cardName}`;
+              }}
+            />
+            <p className="text-lg font-bold font-serif text-accent mt-1">{cardName}</p>
+            {/* <p className="text-xs text-muted-foreground">(Posición Normal)</p> */}
           </div>
         )}
       </CardContent>

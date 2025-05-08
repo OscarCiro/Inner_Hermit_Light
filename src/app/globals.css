@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+ @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+.animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+ @keyframes rotate-y { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(180deg); } }
+.rotate-y-180 { animation: rotate-y 0.6s forwards; } /* For card flip if needed */ .transform-style-preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+ .rotate-y-0 { transform: rotateY(0deg); }
+ .rotate-y-180-static { transform: rotateY(180deg); }
 @layer base {
   :root {
     --background: 140 35% 12%; /* Dark Green */

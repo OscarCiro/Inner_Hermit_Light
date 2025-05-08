@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      // If you were using external images during development from localhost:
+      // {
+      //   protocol: 'http',
+      //   hostname: 'localhost',
+      // },
     ],
   },
 };
