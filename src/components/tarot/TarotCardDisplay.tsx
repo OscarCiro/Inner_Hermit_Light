@@ -7,23 +7,17 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye } from 'lucide-react';
+import { getTarotCardImagePathAndAiHint } from '@/lib/tarot-card-mapper';
 
 interface TarotCardDisplayProps {
-  cardName: string;
+  cardName: string; // This will be the Spanish name from the AI
   position: string; // e.g., "Pasado", "Presente", "Futuro"
   initiallyRevealed?: boolean;
   onReveal?: () => void;
   isRevealed?: boolean;
 }
 
-const getCardImageSrc = (cardName: string): string => {
-  // Converts "El Sol" to "el-sol.png", "The Fool" to "the-fool.png" etc.
-  // Assumes images are PNGs.
-  const imageName = cardName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.png';
-  return `/tarot-cards/${imageName}`;
-};
-
-const cardBackImageSrc = '/tarot-cards/card-back.png'; // Changed to .png
+const cardBackImageSrc = '/tarot-cards/default-card.jpg'; 
 
 const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
   cardName,
@@ -43,7 +37,8 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     }
   };
 
-  const revealedImageSrc = getCardImageSrc(cardName);
+  // Get image path and AI hint using the mapper
+  const { path: revealedImageSrc, hint: aiHint } = getTarotCardImagePathAndAiHint(cardName);
 
   return (
     <Card className={cn(
@@ -51,6 +46,10 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
       isRevealed ? "bg-card rotate-y-0" : "bg-secondary hover:shadow-primary/30 cursor-pointer"
     )}
     onClick={!isRevealed ? handleReveal : undefined}
+    role="button"
+    tabIndex={!isRevealed ? 0 : -1}
+    aria-pressed={isRevealed}
+    aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}`}
     >
       <CardHeader className="p-2 text-center">
         <CardTitle className="text-lg font-serif text-primary">{position}</CardTitle>
@@ -68,7 +67,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
               priority // Preload card backs as they are common
               onError={(e) => {
                 // Fallback for card back if missing
-                e.currentTarget.src = '/tarot-cards/default-card.png'; // Default fallback
+                e.currentTarget.src = '/tarot-cards/default-card.jpg'; 
                 e.currentTarget.alt = `Imagen no disponible para el dorso de la carta`;
               }}
             />
@@ -80,19 +79,19 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
           <div className="text-center w-full h-full flex flex-col items-center justify-center">
             <Image
               src={revealedImageSrc}
-              alt={`Carta ${cardName} - ${position}`}
+              alt={`Carta ${cardName} - ${position}`} // Alt text uses Spanish name
               width={120} 
               height={180}
-              className="rounded-md object-contain mx-auto mb-2" // object-contain to prevent cropping
-              data-ai-hint={cardName.toLowerCase().split(" ").slice(0,2).join(" ")} // e.g. "el sol"
+              className="rounded-md object-contain mx-auto mb-2" 
+              data-ai-hint={aiHint} // Use English hint from mapper
               onError={(e) => {
                 // Fallback if a specific card image is missing
-                e.currentTarget.src = '/tarot-cards/default-card.png'; // Changed to .png
+                console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default.`);
+                e.currentTarget.src = '/tarot-cards/default-card.jpg'; 
                 e.currentTarget.alt = `Imagen no disponible para ${cardName}`;
               }}
             />
-            <p className="text-lg font-bold font-serif text-accent mt-1">{cardName}</p>
-            {/* <p className="text-xs text-muted-foreground">(Posición Normal)</p> */}
+            <p className="text-lg font-bold font-serif text-accent mt-1">{cardName}</p> {/* Display Spanish name */}
           </div>
         )}
       </CardContent>
