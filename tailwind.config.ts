@@ -11,8 +11,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        sans: ['var(--font-open-sans)', ...defaultTheme.fontFamily.sans],
-        serif: ['var(--font-cinzel)', ...defaultTheme.fontFamily.serif],
+        sans: ['Enoway', ...defaultTheme.fontFamily.sans],
+        serif: ['Enoway', ...defaultTheme.fontFamily.serif],
       },
   		colors: {
   			background: 'hsl(var(--background))',

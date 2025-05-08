@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import React from 'react';
+import hermitImage from '../../images/ermitaño.png';
 
 export const HermitIllustration: React.FC = () => {
   return (
     <div className="my-8 flex justify-center">
       <Image
-        src="https://picsum.photos/seed/hermit/300/450"
+        src={hermitImage}
         alt="El Ermitaño"
         width={200}
         height={300}

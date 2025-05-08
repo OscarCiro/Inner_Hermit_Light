@@ -1,20 +1,11 @@
 import type { Metadata } from 'next';
-import { Cinzel_Decorative, Open_Sans } from 'next/font/google';
+// Removed Cinzel_Decorative and Open_Sans imports
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AnimatedBackgroundStars } from '@/components/layout/AnimatedBackgroundStars';
 import { cn } from '@/lib/utils';
 
-const cinzel = Cinzel_Decorative({
-  subsets: ['latin'],
-  weight: ['400', '700', '900'],
-  variable: '--font-cinzel',
-});
-
-const openSans = Open_Sans({
-  subsets: ['latin'],
-  variable: '--font-open-sans',
-});
+// Removed cinzel and openSans constant declarations
 
 export const metadata: Metadata = {
   title: 'Luz del Ermitaño Interior',
@@ -29,7 +20,8 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body className={cn(
-        `${cinzel.variable} ${openSans.variable} antialiased font-sans bg-background text-foreground`,
+        // Removed font variables, relying on Tailwind's font-sans and font-serif classes
+        "antialiased font-sans bg-background text-foreground",
         "min-h-screen flex flex-col"
       )}>
         <AnimatedBackgroundStars />
