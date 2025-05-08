@@ -67,8 +67,9 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
               priority // Preload card backs as they are common
               onError={(e) => {
                 // Fallback for card back if missing
-                e.currentTarget.src = '/tarot-cards/default-card.jpg'; 
-                e.currentTarget.alt = `Imagen no disponible para el dorso de la carta`;
+                console.warn(`Failed to load card back image at ${cardBackImageSrc}. Check if 'public${cardBackImageSrc}' exists. Falling back to transparent pixel.`);
+                (e.currentTarget as HTMLImageElement).src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; // Transparent pixel
+                (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para el dorso de la carta`;
               }}
             />
             <Button variant="ghost" size="sm" className="mt-4 text-xs text-foreground/70 hover:text-primary">
@@ -86,9 +87,9 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
               data-ai-hint={aiHint} // Use English hint from mapper
               onError={(e) => {
                 // Fallback if a specific card image is missing
-                console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default.`);
-                e.currentTarget.src = '/tarot-cards/default-card.jpg'; 
-                e.currentTarget.alt = `Imagen no disponible para ${cardName}`;
+                console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default card image. Ensure 'public${revealedImageSrc}' and 'public/tarot-cards/default-card.jpg' exist.`);
+                (e.currentTarget as HTMLImageElement).src = '/tarot-cards/default-card.jpg'; 
+                (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para ${cardName}`;
               }}
             />
             <p className="text-lg font-bold font-serif text-accent mt-1">{cardName}</p> {/* Display Spanish name */}
