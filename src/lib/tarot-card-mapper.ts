@@ -35,7 +35,6 @@ const minorArcanaSuitsSpanishToEnglishFolder: Record<string, string> = {
   "Pentáculos": "pentacles", // Alias for Pentacles
 };
 
-// Maps Spanish rank prefix (e.g., "As de") to English filename prefix (e.g., "ace_of")
 const minorArcanaRanksSpanishToEnglishPrefix: Record<string, string> = {
   "As de": "ace_of",
   "Dos de": "two_of",
@@ -54,7 +53,6 @@ const minorArcanaRanksSpanishToEnglishPrefix: Record<string, string> = {
   "Rey de": "king_of",
 };
 
-// Maps Spanish suit name (e.g., "Bastos") to English suit part for filename (e.g., "wands")
 const minorArcanaSuitsSpanishToEnglishFilePart: Record<string, string> = {
   "Bastos": "wands",
   "Copas": "cups",
@@ -67,27 +65,53 @@ export const getTarotCardImagePathAndAiHint = (
   spanishCardName: string
 ): { path: string; hint: string } => {
   const normalizedSpanishCardName = spanishCardName.trim();
+  const lowerNormalizedSpanishCardName = normalizedSpanishCardName.toLowerCase();
 
-  // Check Major Arcana
-  const majorArcanaEnglishName = majorArcanaSpanishToEnglish[normalizedSpanishCardName];
-  if (majorArcanaEnglishName) {
+  // Check Major Arcana (case-insensitive key match)
+  let majorArcanaMapKey: string | undefined;
+  for (const key in majorArcanaSpanishToEnglish) {
+    if (key.toLowerCase() === lowerNormalizedSpanishCardName) {
+      majorArcanaMapKey = key;
+      break;
+    }
+  }
+
+  if (majorArcanaMapKey) {
+    const englishName = majorArcanaSpanishToEnglish[majorArcanaMapKey];
     return {
-      path: `/tarot-cards/major_arcana/${majorArcanaEnglishName}.png`,
-      hint: majorArcanaEnglishName.replace(/_/g, " ").split(" ").slice(0, 2).join(" "),
+      path: `/tarot-cards/major_arcana/${englishName}.png`,
+      hint: englishName.replace(/_/g, " ").split(" ").slice(0, 2).join(" "),
     };
   }
 
-  // Check Minor Arcana
+  // Check Minor Arcana (case-insensitive prefix and suit match)
   for (const rankPrefixSpanish in minorArcanaRanksSpanishToEnglishPrefix) {
-    if (normalizedSpanishCardName.startsWith(rankPrefixSpanish)) {
+    if (lowerNormalizedSpanishCardName.startsWith(rankPrefixSpanish.toLowerCase())) {
+      // Extract the suit part using the original rankPrefixSpanish length, then trim and lowercase
       const suitSpanish = normalizedSpanishCardName.substring(rankPrefixSpanish.length).trim();
-      
-      const rankFilePrefixEnglish = minorArcanaRanksSpanishToEnglishPrefix[rankPrefixSpanish];
-      const suitFolderEnglish = minorArcanaSuitsSpanishToEnglishFolder[suitSpanish];
-      const suitFilePartEnglish = minorArcanaSuitsSpanishToEnglishFilePart[suitSpanish];
+      const lowerSuitSpanish = suitSpanish.toLowerCase();
 
-      if (suitFolderEnglish && rankFilePrefixEnglish && suitFilePartEnglish) {
-        // Filename is typically like "ace_of_wands.png"
+      let suitFolderKey: string | undefined;
+      for (const key in minorArcanaSuitsSpanishToEnglishFolder) {
+        if (key.toLowerCase() === lowerSuitSpanish) {
+          suitFolderKey = key;
+          break;
+        }
+      }
+
+      let suitFilePartKey: string | undefined;
+      for (const key in minorArcanaSuitsSpanishToEnglishFilePart) {
+        if (key.toLowerCase() === lowerSuitSpanish) {
+          suitFilePartKey = key;
+          break;
+        }
+      }
+
+      if (suitFolderKey && suitFilePartKey) {
+        const rankFilePrefixEnglish = minorArcanaRanksSpanishToEnglishPrefix[rankPrefixSpanish]; // Use original key for value lookup
+        const suitFolderEnglish = minorArcanaSuitsSpanishToEnglishFolder[suitFolderKey];
+        const suitFilePartEnglish = minorArcanaSuitsSpanishToEnglishFilePart[suitFilePartKey];
+        
         const englishFileName = `${rankFilePrefixEnglish}_${suitFilePartEnglish}`;
         return {
           path: `/tarot-cards/minor_arcana/${suitFolderEnglish}/${englishFileName}.png`,
@@ -97,8 +121,8 @@ export const getTarotCardImagePathAndAiHint = (
     }
   }
 
-  // Fallback to a default image if no mapping is found
-  console.warn(`No image mapping found for card: "${normalizedSpanishCardName}". Using default image.`);
+  // Fallback
+  console.warn(`No image mapping found for card: "${normalizedSpanishCardName}" (normalized to: "${lowerNormalizedSpanishCardName}"). Using default image.`);
   return {
     path: '/tarot-cards/default-card.jpg', // Default/fallback card image
     hint: "tarot card", // Generic hint for default
