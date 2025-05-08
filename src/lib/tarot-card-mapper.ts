@@ -79,7 +79,7 @@ export const getTarotCardImagePathAndAiHint = (
   if (majorArcanaMapKey) {
     const englishName = majorArcanaSpanishToEnglish[majorArcanaMapKey];
     return {
-      path: `/tarot-cards/major_arcana/${englishName}.png`,
+      path: `/tarot-cards/${englishName}.png`,
       hint: englishName.replace(/_/g, " ").split(" ").slice(0, 2).join(" "),
     };
   }
@@ -109,12 +109,11 @@ export const getTarotCardImagePathAndAiHint = (
 
       if (suitFolderKey && suitFilePartKey) {
         const rankFilePrefixEnglish = minorArcanaRanksSpanishToEnglishPrefix[rankPrefixSpanish]; // Use original key for value lookup
-        const suitFolderEnglish = minorArcanaSuitsSpanishToEnglishFolder[suitFolderKey];
         const suitFilePartEnglish = minorArcanaSuitsSpanishToEnglishFilePart[suitFilePartKey];
         
         const englishFileName = `${rankFilePrefixEnglish}_${suitFilePartEnglish}`;
         return {
-          path: `/tarot-cards/minor_arcana/${suitFolderEnglish}/${englishFileName}.png`,
+          path: `/tarot-cards/${englishFileName}.png`,
           hint: englishFileName.replace(/_/g, " ").split(" ").slice(0, 2).join(" "),
         };
       }

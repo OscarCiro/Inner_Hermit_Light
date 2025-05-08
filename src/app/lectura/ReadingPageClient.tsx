@@ -7,7 +7,7 @@ import { interpretTarotReading, InterpretTarotReadingOutput, InterpretTarotReadi
 import PageWrapper from '@/components/layout/PageWrapper';
 import TarotCardDisplay from '@/components/tarot/TarotCardDisplay';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Home } from 'lucide-react';
+import { Loader2, RefreshCw, Home, Volume2, VolumeX } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from '@/components/ui/separator';
 
@@ -16,26 +16,33 @@ function ReadingContent() {
   const router = useRouter();
   const query = searchParams.get('q') || '';
   const numCardsParam = searchParams.get('numCards') || '3';
-  const cardCount = parseInt(numCardsParam, 10);
+  // const cardCount = parseInt(numCardsParam, 10); // Not directly used for revealedCards initialization anymore
 
   const [reading, setReading] = useState<InterpretTarotReadingOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revealedCards, setRevealedCards] = useState<boolean[]>([]);
+  const [hasSpoken, setHasSpoken] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
 
   useEffect(() => {
-    // Initialize revealedCards array based on cardCount from URL
-    // This ensures it's ready before the reading data arrives
     const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
     setRevealedCards(Array(currentCardCount).fill(false));
 
     const fetchReading = async () => {
       setLoading(true);
       setError(null);
+      setHasSpoken(false); // Reset for new reading
+      setIsSpeaking(false); // Reset speaking state
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel(); // Cancel any previous speech
+      }
+
       try {
-        const input: InterpretTarotReadingInput = { 
-          query, 
-          numCards: numCardsParam as '3' | '5' | '7' // Type assertion based on form validation
+        const input: InterpretTarotReadingInput = {
+          query,
+          numCards: numCardsParam as '3' | '5' | '7'
         };
         const result = await interpretTarotReading(input);
 
@@ -45,6 +52,8 @@ function ReadingContent() {
           setReading(null);
         } else {
           setReading(result);
+          // Initialize revealedCards based on the actual card count from the API response
+          setRevealedCards(Array(result.cards.length).fill(false));
         }
       } catch (err) {
         console.error("Error fetching tarot reading:", err);
@@ -55,7 +64,7 @@ function ReadingContent() {
     };
 
     fetchReading();
-  }, [query, numCardsParam, searchParams]); // searchParams in dependency array for numCards changes
+  }, [query, numCardsParam, searchParams]);
 
   const handleRevealCard = (cardIndex: number) => {
     setRevealedCards(prev => {
@@ -66,8 +75,61 @@ function ReadingContent() {
       return newRevealed;
     });
   };
+  
+  const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && revealedCards.length === reading.cards.length && revealedCards.every(Boolean);
 
-  const allCardsRevealed = reading && reading.cards && revealedCards.length === reading.cards.length && revealedCards.every(Boolean);
+  useEffect(() => {
+    if (allCardsRevealed && reading?.interpretation && !hasSpoken && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(reading.interpretation);
+      utterance.lang = 'es-ES';
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setHasSpoken(true); // Mark as spoken only after finishing
+      };
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event.error);
+        setIsSpeaking(false);
+        // Optionally setHasSpoken(true) here too to prevent retries on error,
+        // or allow retry by not setting it. For now, let's prevent retries.
+        setHasSpoken(true); 
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis && isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
+    };
+  }, [allCardsRevealed, reading?.interpretation, hasSpoken, isSpeaking]);
+
+
+  const toggleSpeech = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      } else {
+        // If already spoken, or not yet spoken, try to speak
+        const utterance = new SpeechSynthesisUtterance(reading.interpretation);
+        utterance.lang = 'es-ES';
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event.error);
+          setIsSpeaking(false);
+        };
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  };
+
 
   if (loading) {
     return (
@@ -101,13 +163,12 @@ function ReadingContent() {
       </PageWrapper>
     );
   }
-  
-  // Determine grid columns based on number of cards
-  let gridColsClass = "md:grid-cols-3"; // Default for 3 cards
+
+  let gridColsClass = "md:grid-cols-3";
   if (reading.cards.length === 5) {
-    gridColsClass = "md:grid-cols-3 lg:grid-cols-5"; // Adjust for 5 cards to fit better on larger screens
+    gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-     gridColsClass = "md:grid-cols-4 lg:grid-cols-7"; // Adjust for 7 cards
+     gridColsClass = "md:grid-cols-4 lg:grid-cols-7";
   }
 
 
@@ -138,7 +199,14 @@ function ReadingContent() {
 
       {allCardsRevealed && (
         <section className="mt-8 p-6 bg-background/50 rounded-lg shadow-inner border border-primary/20 animate-fadeIn">
-          <h2 className="text-2xl font-serif text-accent mb-4">Interpretación del Ermitaño:</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-serif text-accent">Interpretación del Ermitaño:</h2>
+            {typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation && (
+              <Button onClick={toggleSpeech} variant="outline" size="icon" aria-label={isSpeaking ? "Detener narración" : "Escuchar narración"}>
+                {isSpeaking ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </Button>
+            )}
+          </div>
           <div className="prose prose-invert text-foreground/90 max-w-none whitespace-pre-line text-left leading-relaxed">
             {reading.interpretation.split('\n').map((paragraph, index) => (
               <p key={index} className="mb-3">{paragraph}</p>
@@ -146,7 +214,7 @@ function ReadingContent() {
           </div>
         </section>
       )}
-      
+
       {allCardsRevealed && (
          <p className="mt-10 text-lg font-semibold text-primary italic px-4 py-3 bg-muted/30 rounded-md border border-primary/20">
           "El Ermitaño te invita a una pausa. La respuesta no está en el ruido, sino en tu luz interior. Escúchate."
@@ -179,7 +247,6 @@ function ReadingContent() {
 
 export default function ReadingPageClient() {
   return (
-    // Suspense boundary is required for useSearchParams
     <Suspense fallback={<LoadingFallback />}>
       <ReadingContent />
     </Suspense>
@@ -196,13 +263,3 @@ function LoadingFallback() {
     </PageWrapper>
   );
 }
-
-// Add this to your globals.css or a style tag if not already present
-// @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-// .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-// @keyframes rotate-y { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(180deg); } }
-// .rotate-y-180 { animation: rotate-y 0.6s forwards; } /* For card flip if needed */
-// .transform-style-preserve-3d { transform-style: preserve-3d; }
-// .backface-hidden { backface-visibility: hidden; }
-// .rotate-y-0 { transform: rotateY(0deg); }
-// .rotate-y-180-static { transform: rotateY(180deg); }
