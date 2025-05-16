@@ -52,7 +52,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}`}
     >
       <CardHeader className="p-2 text-center">
-        <CardTitle className="text-lg font-serif text-primary">{position}</CardTitle>
+        <CardTitle className="text-sm font-serif text-primary">{position}</CardTitle>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
         {!isRevealed ? (
@@ -92,7 +92,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
                 (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para ${cardName}`;
               }}
             />
-            <p className="text-lg font-bold font-serif text-accent mt-1">{cardName}</p> {/* Display Spanish name */}
+            <p className="text-sm font-semibold font-serif text-accent mt-1">{cardName}</p> {/* Display Spanish name */}
           </div>
         )}
       </CardContent>
