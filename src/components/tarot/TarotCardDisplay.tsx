@@ -42,7 +42,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
 
   return (
     <Card className={cn(
-      "w-full max-w-[220px] aspect-[2/3] flex flex-col items-center justify-between p-3 transition-all duration-500 transform-style-preserve-3d relative overflow-hidden shadow-xl border-primary/30", // Reduced main padding slightly from p-4 to p-3
+      "w-full max-w-[220px] aspect-[2/3] flex flex-col items-center justify-between p-3 transition-all duration-500 transform-style-preserve-3d relative overflow-hidden shadow-xl border-primary/30",
       isRevealed ? "bg-card rotate-y-0" : "bg-secondary hover:shadow-primary/30 cursor-pointer"
     )}
     onClick={!isRevealed ? handleReveal : undefined}
@@ -51,10 +51,10 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     aria-pressed={isRevealed}
     aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}`}
     >
-      <CardHeader className="p-1 text-center w-full"> {/* Reduced padding from p-2 to p-1 */}
-        <CardTitle className="text-xs font-serif text-primary leading-tight">{position}</CardTitle> {/* Reduced font size from text-sm to text-xs, added leading-tight */}
+      <CardHeader className="p-1 text-center w-full">
+        <CardTitle className="text-xs font-serif text-primary leading-tight">{position}</CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col items-center justify-center p-1 w-full"> {/* Reduced padding from p-2 to p-1 */}
+      <CardContent className="flex-grow flex flex-col items-center justify-center p-1 w-full">
         {!isRevealed ? (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <Image
@@ -71,18 +71,18 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
                 (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para el dorso de la carta`;
               }}
             />
-            <Button variant="ghost" size="sm" className="mt-2 text-xs text-foreground/70 hover:text-primary"> {/* Reduced margin from mt-4 to mt-2 */}
+            <Button variant="ghost" size="sm" className="mt-2 text-xs text-foreground/70 hover:text-primary">
               <Eye className="mr-1 h-3 w-3"/> Revelar
             </Button>
           </div>
         ) : (
-          <div className="text-center w-full h-full flex flex-col items-center justify-around"> {/* Changed justify-center to justify-around for more space distribution */}
+          <div className="flex flex-col items-center text-center">
             <Image
               src={revealedImageSrc}
               alt={`Carta ${cardName} - ${position}`} 
-              width={100} // Reduced image size from 110 to 100
-              height={150} // Reduced image size from 165 to 150
-              className="rounded-md object-contain mx-auto" // Removed mb-2
+              width={110} 
+              height={165} 
+              className="rounded-md object-contain"
               data-ai-hint={aiHint} 
               onError={(e) => {
                 console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default card image. Ensure 'public${revealedImageSrc}' and 'public/tarot-cards/default-card.jpg' exist.`);
@@ -90,7 +90,9 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
                 (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para ${cardName}`;
               }}
             />
-            <p className="text-xs font-semibold font-serif text-accent leading-tight">{cardName}</p> {/* Reduced font size, removed mt-1, added leading-tight */}
+            <p className="mt-2 text-xs font-semibold font-serif text-accent leading-tight w-full">
+              {cardName}
+            </p>
           </div>
         )}
       </CardContent>
