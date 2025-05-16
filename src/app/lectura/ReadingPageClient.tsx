@@ -27,7 +27,6 @@ function ReadingContent() {
 
   useEffect(() => {
     const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
-    // Initialize revealedCards here, but it will be updated if reading.cards.length is different
     setRevealedCards(Array(currentCardCount).fill(false)); 
 
     const fetchReading = async () => {
@@ -46,14 +45,13 @@ function ReadingContent() {
         };
         const result = await interpretTarotReading(input);
         
-        // Use actual card count from response for revealedCards initialization
         const actualCardCountFromResult = result.cards?.length || 0;
 
         if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10)) {
           console.error("Card count mismatch or missing cards", { expected: numCardsParam, actual: actualCardCountFromResult });
           setError("La lectura generada no contiene el número esperado de cartas. Por favor, intenta de nuevo.");
           setReading(null);
-          setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false)); // Reset based on input if error
+          setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
         } else {
           setReading(result);
           setRevealedCards(Array(actualCardCountFromResult).fill(false));
@@ -61,7 +59,7 @@ function ReadingContent() {
       } catch (err) {
         console.error("Error fetching tarot reading:", err);
         setError("Hubo un error al obtener tu lectura. Por favor, intenta de nuevo.");
-        setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false)); // Reset based on input if error
+        setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
       } finally {
         setLoading(false);
       }
@@ -83,15 +81,13 @@ function ReadingContent() {
   const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && reading.cards.length === revealedCards.length && revealedCards.every(Boolean);
 
   useEffect(() => {
-    // This effect handles the automatic speech when all cards are revealed.
     let utteranceInstance: SpeechSynthesisUtterance | null = null;
     let onSpeechStart: (() => void) | null = null;
     let onSpeechEnd: (() => void) | null = null;
     let onSpeechError: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
 
     if (allCardsRevealed && reading?.interpretation && !hasSpoken && typeof window !== 'undefined' && window.speechSynthesis) {
-      // Cancel any existing speech before starting a new one.
-      window.speechSynthesis.cancel();
+      window.speechSynthesis.cancel(); 
 
       utteranceInstance = new SpeechSynthesisUtterance(reading.interpretation);
       utteranceInstance.lang = 'es-ES';
@@ -101,12 +97,16 @@ function ReadingContent() {
       };
       onSpeechEnd = () => {
         setIsSpeaking(false);
-        setHasSpoken(true); // Mark as spoken only after finishing
+        setHasSpoken(true); 
       };
       onSpeechError = (event: SpeechSynthesisErrorEvent) => {
-        console.error('Speech synthesis error:', event.error);
+        // If speech was active and the error is "interrupted",
+        // it's often due to an explicit cancel(). We choose not to log this as a critical error.
+        if (!(isSpeaking && event.error === "interrupted")) {
+          console.error('Speech synthesis error:', event.error);
+        }
         setIsSpeaking(false);
-        setHasSpoken(true); // Prevent retries on error
+        setHasSpoken(true); 
       };
       
       utteranceInstance.addEventListener('start', onSpeechStart);
@@ -122,22 +122,20 @@ function ReadingContent() {
         utteranceInstance.removeEventListener('end', onSpeechEnd);
         utteranceInstance.removeEventListener('error', onSpeechError);
       }
-      // Cancel speech if the effect cleans up (e.g. component unmount or dependencies change)
-      // and speech was initiated by this effect.
-      if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
-         window.speechSynthesis.cancel();
-      }
+      // No global cancel here to avoid interrupting other speech unless this specific utterance needs stopping.
+      // This specific utterance will be stopped if a new reading is fetched (by cancel in fetchReading)
+      // or if the user toggles speech (by cancel in toggleSpeech).
+      // If the component unmounts entirely, speech might continue if not cancelled elsewhere,
+      // but for this app's flow, navigation usually triggers fetchReading.
     };
-  }, [allCardsRevealed, reading?.interpretation, hasSpoken]); // Removed isSpeaking from dependencies
+  }, [allCardsRevealed, reading?.interpretation, hasSpoken]);
 
 
   const toggleSpeech = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation) {
       if (isSpeaking) {
         window.speechSynthesis.cancel();
-        // Let the 'end' or 'error' event of the utterance handle setIsSpeaking(false)
       } else {
-        // Ensure any residual speech is cleared before starting new
         window.speechSynthesis.cancel(); 
         
         const utterance = new SpeechSynthesisUtterance(reading.interpretation);
@@ -145,10 +143,11 @@ function ReadingContent() {
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => {
           setIsSpeaking(false);
-          // Do not set hasSpoken here, as toggle is manual
         };
         utterance.onerror = (event) => {
-          console.error('Speech synthesis error on toggle:', event.error);
+          if (!(isSpeaking && event.error === "interrupted")) { // Also apply similar logic here for consistency
+             console.error('Speech synthesis error on toggle:', event.error);
+          }
           setIsSpeaking(false);
         };
         window.speechSynthesis.speak(utterance);
@@ -192,9 +191,9 @@ function ReadingContent() {
 
   let gridColsClass = "md:grid-cols-3";
   if (reading.cards.length === 5) {
-    gridColsClass = "md:grid-cols-3 lg:grid-cols-5"; // Adjusted for better 5 card layout
+    gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-     gridColsClass = "md:grid-cols-4 lg:grid-cols-7"; // Adjusted for better 7 card layout
+     gridColsClass = "md:grid-cols-4 lg:grid-cols-7";
   }
 
 
