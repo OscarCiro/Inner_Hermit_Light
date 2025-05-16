@@ -16,7 +16,6 @@ function ReadingContent() {
   const router = useRouter();
   const query = searchParams.get('q') || '';
   const numCardsParam = searchParams.get('numCards') || '3';
-  // const cardCount = parseInt(numCardsParam, 10); // Not directly used for revealedCards initialization anymore
 
   const [reading, setReading] = useState<InterpretTarotReadingOutput | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,15 +27,16 @@ function ReadingContent() {
 
   useEffect(() => {
     const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
-    setRevealedCards(Array(currentCardCount).fill(false));
+    // Initialize revealedCards here, but it will be updated if reading.cards.length is different
+    setRevealedCards(Array(currentCardCount).fill(false)); 
 
     const fetchReading = async () => {
       setLoading(true);
       setError(null);
-      setHasSpoken(false); // Reset for new reading
-      setIsSpeaking(false); // Reset speaking state
+      setHasSpoken(false); 
+      setIsSpeaking(false); 
       if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel(); // Cancel any previous speech
+        window.speechSynthesis.cancel(); 
       }
 
       try {
@@ -45,19 +45,23 @@ function ReadingContent() {
           numCards: numCardsParam as '3' | '5' | '7'
         };
         const result = await interpretTarotReading(input);
+        
+        // Use actual card count from response for revealedCards initialization
+        const actualCardCountFromResult = result.cards?.length || 0;
 
-        if (!result.cards || result.cards.length !== currentCardCount) {
-          console.error("Card count mismatch or missing cards", { expected: currentCardCount, actual: result.cards?.length });
+        if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10)) {
+          console.error("Card count mismatch or missing cards", { expected: numCardsParam, actual: actualCardCountFromResult });
           setError("La lectura generada no contiene el número esperado de cartas. Por favor, intenta de nuevo.");
           setReading(null);
+          setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false)); // Reset based on input if error
         } else {
           setReading(result);
-          // Initialize revealedCards based on the actual card count from the API response
-          setRevealedCards(Array(result.cards.length).fill(false));
+          setRevealedCards(Array(actualCardCountFromResult).fill(false));
         }
       } catch (err) {
         console.error("Error fetching tarot reading:", err);
         setError("Hubo un error al obtener tu lectura. Por favor, intenta de nuevo.");
+        setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false)); // Reset based on input if error
       } finally {
         setLoading(false);
       }
@@ -76,53 +80,75 @@ function ReadingContent() {
     });
   };
   
-  const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && revealedCards.length === reading.cards.length && revealedCards.every(Boolean);
+  const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && reading.cards.length === revealedCards.length && revealedCards.every(Boolean);
 
   useEffect(() => {
-    if (allCardsRevealed && reading?.interpretation && !hasSpoken && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(reading.interpretation);
-      utterance.lang = 'es-ES';
+    // This effect handles the automatic speech when all cards are revealed.
+    let utteranceInstance: SpeechSynthesisUtterance | null = null;
+    let onSpeechStart: (() => void) | null = null;
+    let onSpeechEnd: (() => void) | null = null;
+    let onSpeechError: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
 
-      utterance.onstart = () => {
+    if (allCardsRevealed && reading?.interpretation && !hasSpoken && typeof window !== 'undefined' && window.speechSynthesis) {
+      // Cancel any existing speech before starting a new one.
+      window.speechSynthesis.cancel();
+
+      utteranceInstance = new SpeechSynthesisUtterance(reading.interpretation);
+      utteranceInstance.lang = 'es-ES';
+
+      onSpeechStart = () => {
         setIsSpeaking(true);
       };
-      utterance.onend = () => {
+      onSpeechEnd = () => {
         setIsSpeaking(false);
         setHasSpoken(true); // Mark as spoken only after finishing
       };
-      utterance.onerror = (event) => {
+      onSpeechError = (event: SpeechSynthesisErrorEvent) => {
         console.error('Speech synthesis error:', event.error);
         setIsSpeaking(false);
-        // Optionally setHasSpoken(true) here too to prevent retries on error,
-        // or allow retry by not setting it. For now, let's prevent retries.
-        setHasSpoken(true); 
+        setHasSpoken(true); // Prevent retries on error
       };
       
-      window.speechSynthesis.speak(utterance);
+      utteranceInstance.addEventListener('start', onSpeechStart);
+      utteranceInstance.addEventListener('end', onSpeechEnd);
+      utteranceInstance.addEventListener('error', onSpeechError);
+      
+      window.speechSynthesis.speak(utteranceInstance);
     }
 
     return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis && isSpeaking) {
-        window.speechSynthesis.cancel();
-        setIsSpeaking(false);
+      if (utteranceInstance && onSpeechStart && onSpeechEnd && onSpeechError) {
+        utteranceInstance.removeEventListener('start', onSpeechStart);
+        utteranceInstance.removeEventListener('end', onSpeechEnd);
+        utteranceInstance.removeEventListener('error', onSpeechError);
+      }
+      // Cancel speech if the effect cleans up (e.g. component unmount or dependencies change)
+      // and speech was initiated by this effect.
+      if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+         window.speechSynthesis.cancel();
       }
     };
-  }, [allCardsRevealed, reading?.interpretation, hasSpoken, isSpeaking]);
+  }, [allCardsRevealed, reading?.interpretation, hasSpoken]); // Removed isSpeaking from dependencies
 
 
   const toggleSpeech = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation) {
       if (isSpeaking) {
         window.speechSynthesis.cancel();
-        setIsSpeaking(false);
+        // Let the 'end' or 'error' event of the utterance handle setIsSpeaking(false)
       } else {
-        // If already spoken, or not yet spoken, try to speak
+        // Ensure any residual speech is cleared before starting new
+        window.speechSynthesis.cancel(); 
+        
         const utterance = new SpeechSynthesisUtterance(reading.interpretation);
         utterance.lang = 'es-ES';
         utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          // Do not set hasSpoken here, as toggle is manual
+        };
         utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event.error);
+          console.error('Speech synthesis error on toggle:', event.error);
           setIsSpeaking(false);
         };
         window.speechSynthesis.speak(utterance);
@@ -166,9 +192,9 @@ function ReadingContent() {
 
   let gridColsClass = "md:grid-cols-3";
   if (reading.cards.length === 5) {
-    gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
+    gridColsClass = "md:grid-cols-3 lg:grid-cols-5"; // Adjusted for better 5 card layout
   } else if (reading.cards.length === 7) {
-     gridColsClass = "md:grid-cols-4 lg:grid-cols-7";
+     gridColsClass = "md:grid-cols-4 lg:grid-cols-7"; // Adjusted for better 7 card layout
   }
 
 

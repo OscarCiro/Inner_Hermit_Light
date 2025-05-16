@@ -14,7 +14,7 @@ const SpotifyPlayer: React.FC = () => {
     return null; 
   }
 
-  const playlistId = "37i9dQZF1DWZqd5JICfYwA"; // Example: Peaceful Meditation playlist
+  const playlistId = "66jL7XQisJjrUvma33ynWq"; // Example: Peaceful Meditation playlist
   const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`; // theme=0 for dark theme
 
   return (
