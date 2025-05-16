@@ -122,11 +122,6 @@ function ReadingContent() {
         utteranceInstance.removeEventListener('end', onSpeechEnd);
         utteranceInstance.removeEventListener('error', onSpeechError);
       }
-      // No global cancel here to avoid interrupting other speech unless this specific utterance needs stopping.
-      // This specific utterance will be stopped if a new reading is fetched (by cancel in fetchReading)
-      // or if the user toggles speech (by cancel in toggleSpeech).
-      // If the component unmounts entirely, speech might continue if not cancelled elsewhere,
-      // but for this app's flow, navigation usually triggers fetchReading.
     };
   }, [allCardsRevealed, reading?.interpretation, hasSpoken]);
 
@@ -145,7 +140,7 @@ function ReadingContent() {
           setIsSpeaking(false);
         };
         utterance.onerror = (event) => {
-          if (!(isSpeaking && event.error === "interrupted")) { // Also apply similar logic here for consistency
+          if (!(isSpeaking && event.error === "interrupted")) { 
              console.error('Speech synthesis error on toggle:', event.error);
           }
           setIsSpeaking(false);
@@ -180,7 +175,7 @@ function ReadingContent() {
 
   if (!reading || !reading.cards || reading.cards.length === 0) {
     return (
-      <PageWrapper>
+      <PageWrapper contentClassName="max-w-5xl">
         <p className="text-xl">No se pudo obtener la lectura o la lectura está vacía.</p>
         <Button onClick={() => router.push('/consulta')} className="mt-4">
           Nueva Consulta
@@ -189,20 +184,28 @@ function ReadingContent() {
     );
   }
 
-  let gridColsClass = "md:grid-cols-3";
+  // Base classes for the grid: "grid grid-cols-1 sm:grid-cols-2"
+  // gridColsClass will add responsive classes for md and lg.
+  let gridColsClass = "sm:grid-cols-3 md:grid-cols-3"; // Default for 3 cards (sm:grid-cols-3 overrides base sm:grid-cols-2)
+
   if (reading.cards.length === 5) {
+    // For 5 cards: grid-cols-1 sm:grid-cols-2 (base) md:grid-cols-3 lg:grid-cols-5
     gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-     gridColsClass = "md:grid-cols-4 lg:grid-cols-7";
+    // For 7 cards: grid-cols-1 sm:grid-cols-2 (base) md:grid-cols-4 lg:grid-cols-4
+    gridColsClass = "md:grid-cols-4 lg:grid-cols-4";
   }
 
 
   return (
-    <PageWrapper className="bg-card/30 backdrop-blur-md" style={{
-      backgroundImage: "radial-gradient(circle, hsl(var(--muted)/0.1) 1px, transparent 1px), radial-gradient(circle, hsl(var(--muted)/0.05) 1px, transparent 1px)",
-      backgroundSize: "30px 30px, 15px 15px",
-      backgroundPosition: "0 0, 7.5px 7.5px"
-    }}>
+    <PageWrapper 
+      contentClassName="max-w-5xl" // Widen the content area
+      className="bg-card/30 backdrop-blur-md" 
+      style={{
+        backgroundImage: "radial-gradient(circle, hsl(var(--muted)/0.1) 1px, transparent 1px), radial-gradient(circle, hsl(var(--muted)/0.05) 1px, transparent 1px)",
+        backgroundSize: "30px 30px, 15px 15px",
+        backgroundPosition: "0 0, 7.5px 7.5px"
+      }}>
       <header className="mb-8">
         <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">
           Revelación
@@ -280,7 +283,7 @@ export default function ReadingPageClient() {
 
 function LoadingFallback() {
   return (
-    <PageWrapper>
+    <PageWrapper contentClassName="max-w-5xl">
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
         <p className="text-xl text-foreground/80">Cargando tu destino...</p>
