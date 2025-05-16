@@ -42,7 +42,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
 
   return (
     <Card className={cn(
-      "w-full max-w-[220px] aspect-[2/3] flex flex-col items-center justify-center p-4 transition-all duration-500 transform-style-preserve-3d relative overflow-hidden shadow-xl border-primary/30",
+      "w-full max-w-[220px] aspect-[2/3] flex flex-col items-center justify-between p-3 transition-all duration-500 transform-style-preserve-3d relative overflow-hidden shadow-xl border-primary/30", // Reduced main padding slightly from p-4 to p-3
       isRevealed ? "bg-card rotate-y-0" : "bg-secondary hover:shadow-primary/30 cursor-pointer"
     )}
     onClick={!isRevealed ? handleReveal : undefined}
@@ -51,48 +51,46 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     aria-pressed={isRevealed}
     aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}`}
     >
-      <CardHeader className="p-2 text-center">
-        <CardTitle className="text-sm font-serif text-primary">{position}</CardTitle>
+      <CardHeader className="p-1 text-center w-full"> {/* Reduced padding from p-2 to p-1 */}
+        <CardTitle className="text-xs font-serif text-primary leading-tight">{position}</CardTitle> {/* Reduced font size from text-sm to text-xs, added leading-tight */}
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
+      <CardContent className="flex-grow flex flex-col items-center justify-center p-1 w-full"> {/* Reduced padding from p-2 to p-1 */}
         {!isRevealed ? (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <Image
               src={cardBackImageSrc}
               alt={`Carta ${position} - Dorso`}
-              width={100}
+              width={100} 
               height={150}
               className="rounded-md object-cover opacity-80 group-hover:opacity-100 transition-opacity"
               data-ai-hint="tarot card back"
-              priority // Preload card backs as they are common
+              priority 
               onError={(e) => {
-                // Fallback for card back if missing
                 console.warn(`Failed to load card back image at ${cardBackImageSrc}. Check if 'public${cardBackImageSrc}' exists. Falling back to transparent pixel.`);
-                (e.currentTarget as HTMLImageElement).src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; // Transparent pixel
+                (e.currentTarget as HTMLImageElement).src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; 
                 (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para el dorso de la carta`;
               }}
             />
-            <Button variant="ghost" size="sm" className="mt-4 text-xs text-foreground/70 hover:text-primary">
+            <Button variant="ghost" size="sm" className="mt-2 text-xs text-foreground/70 hover:text-primary"> {/* Reduced margin from mt-4 to mt-2 */}
               <Eye className="mr-1 h-3 w-3"/> Revelar
             </Button>
           </div>
         ) : (
-          <div className="text-center w-full h-full flex flex-col items-center justify-center">
+          <div className="text-center w-full h-full flex flex-col items-center justify-around"> {/* Changed justify-center to justify-around for more space distribution */}
             <Image
               src={revealedImageSrc}
-              alt={`Carta ${cardName} - ${position}`} // Alt text uses Spanish name
-              width={120} 
-              height={180}
-              className="rounded-md object-contain mx-auto mb-2" 
-              data-ai-hint={aiHint} // Use English hint from mapper
+              alt={`Carta ${cardName} - ${position}`} 
+              width={100} // Reduced image size from 110 to 100
+              height={150} // Reduced image size from 165 to 150
+              className="rounded-md object-contain mx-auto" // Removed mb-2
+              data-ai-hint={aiHint} 
               onError={(e) => {
-                // Fallback if a specific card image is missing
                 console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default card image. Ensure 'public${revealedImageSrc}' and 'public/tarot-cards/default-card.jpg' exist.`);
                 (e.currentTarget as HTMLImageElement).src = '/tarot-cards/default-card.jpg'; 
                 (e.currentTarget as HTMLImageElement).alt = `Imagen no disponible para ${cardName}`;
               }}
             />
-            <p className="text-sm font-semibold font-serif text-accent mt-1">{cardName}</p> {/* Display Spanish name */}
+            <p className="text-xs font-semibold font-serif text-accent leading-tight">{cardName}</p> {/* Reduced font size, removed mt-1, added leading-tight */}
           </div>
         )}
       </CardContent>
