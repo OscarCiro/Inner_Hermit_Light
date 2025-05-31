@@ -23,6 +23,27 @@ function ReadingContent() {
   const [revealedCards, setRevealedCards] = useState<boolean[]>([]);
   const [hasSpoken, setHasSpoken] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices();
+        setAvailableVoices(voices);
+      }
+    };
+
+    loadVoices(); // Initial load
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices; // Listen for changes
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -47,8 +68,8 @@ function ReadingContent() {
         
         const actualCardCountFromResult = result.cards?.length || 0;
 
-        if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10) || !result.cards.every(card => typeof card.isReversed === 'boolean')) {
-          console.error("Card count mismatch, missing cards, or missing isReversed property", { expected: numCardsParam, actual: actualCardCountFromResult, cards: result.cards });
+        if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10) || !result.cards.every(card => typeof card.isReversed === 'boolean' && typeof card.name === 'string' && card.name.length > 0)) {
+          console.error("Card count mismatch, missing cards, missing isReversed, or invalid name", { expected: numCardsParam, actual: actualCardCountFromResult, cards: result.cards });
           setError("La lectura generada no es válida. Por favor, intenta de nuevo.");
           setReading(null);
           setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
@@ -80,6 +101,42 @@ function ReadingContent() {
   
   const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && reading.cards.length === revealedCards.length && revealedCards.every(Boolean);
 
+  const getPreferredSpanishVoice = (): SpeechSynthesisVoice | null => {
+    if (!availableVoices.length) return null;
+
+    const spanishVoices = availableVoices.filter(voice => voice.lang.startsWith('es-'));
+    if (!spanishVoices.length) return null;
+
+    // Prioritize local, high-quality sounding names, then any Spanish voice
+    const qualityKeywords = ['google', 'microsoft', 'elena', 'paulina', 'jorge', 'diego'];
+    
+    let bestMatch: SpeechSynthesisVoice | null = null;
+
+    // 1. Local Spanish voices with quality keywords
+    bestMatch = spanishVoices.find(v => v.localService && qualityKeywords.some(kw => v.name.toLowerCase().includes(kw))) || null;
+    if (bestMatch) return bestMatch;
+
+    // 2. Any Spanish voice with quality keywords
+    bestMatch = spanishVoices.find(v => qualityKeywords.some(kw => v.name.toLowerCase().includes(kw))) || null;
+    if (bestMatch) return bestMatch;
+    
+    // 3. Local Spanish voices
+    bestMatch = spanishVoices.find(v => v.localService) || null;
+    if (bestMatch) return bestMatch;
+
+    // 4. First available 'es-ES' voice
+    bestMatch = spanishVoices.find(v => v.lang === 'es-ES') || null;
+    if (bestMatch) return bestMatch;
+
+    // 5. First available 'es-MX' voice
+    bestMatch = spanishVoices.find(v => v.lang === 'es-MX') || null;
+    if (bestMatch) return bestMatch;
+
+    // 6. Any Spanish voice
+    return spanishVoices[0];
+  };
+
+
   useEffect(() => {
     let utteranceInstance: SpeechSynthesisUtterance | null = null;
     let onSpeechStart: (() => void) | null = null;
@@ -91,6 +148,13 @@ function ReadingContent() {
 
       utteranceInstance = new SpeechSynthesisUtterance(reading.interpretation);
       utteranceInstance.lang = 'es-ES';
+      utteranceInstance.rate = 0.9; // Slightly slower
+      utteranceInstance.pitch = 1.0; // Default pitch
+
+      const preferredVoice = getPreferredSpanishVoice();
+      if (preferredVoice) {
+        utteranceInstance.voice = preferredVoice;
+      }
 
       onSpeechStart = () => {
         setIsSpeaking(true);
@@ -111,7 +175,12 @@ function ReadingContent() {
       utteranceInstance.addEventListener('end', onSpeechEnd);
       utteranceInstance.addEventListener('error', onSpeechError);
       
-      window.speechSynthesis.speak(utteranceInstance);
+      // Delay slightly to ensure voice selection takes effect if voices loaded async
+      setTimeout(() => {
+         if (utteranceInstance && !isSpeaking && allCardsRevealed && !hasSpoken) { // Check state again before speaking
+            window.speechSynthesis.speak(utteranceInstance);
+         }
+      }, 100);
     }
 
     return () => {
@@ -119,27 +188,37 @@ function ReadingContent() {
         utteranceInstance.removeEventListener('start', onSpeechStart);
         utteranceInstance.removeEventListener('end', onSpeechEnd);
         utteranceInstance.removeEventListener('error', onSpeechError);
-         if (isSpeaking) { // Ensure to cancel speech if component unmounts while speaking
+         if (isSpeaking) { 
            window.speechSynthesis.cancel();
            setIsSpeaking(false);
          }
       }
     };
-  }, [allCardsRevealed, reading?.interpretation, hasSpoken]); // Removed isSpeaking from dependencies
+  }, [allCardsRevealed, reading?.interpretation, hasSpoken, availableVoices]);
 
 
   const toggleSpeech = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation) {
       if (isSpeaking) {
         window.speechSynthesis.cancel();
+        // setIsSpeaking(false) will be handled by onend or onerror event of the utterance
       } else {
         window.speechSynthesis.cancel(); 
         
         const utterance = new SpeechSynthesisUtterance(reading.interpretation);
         utterance.lang = 'es-ES';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+
+        const preferredVoice = getPreferredSpanishVoice();
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+        
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => {
           setIsSpeaking(false);
+          // setHasSpoken(true); // User manually triggered, maybe they want to replay
         };
         utterance.onerror = (event) => {
           if (!(isSpeaking && event.error === "interrupted")) { 
@@ -147,7 +226,10 @@ function ReadingContent() {
           }
           setIsSpeaking(false);
         };
-        window.speechSynthesis.speak(utterance);
+        // Delay slightly to ensure voice selection takes effect
+        setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+        }, 100);
       }
     }
   };
@@ -190,7 +272,7 @@ function ReadingContent() {
   if (reading.cards.length === 5) {
     gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-    gridColsClass = "md:grid-cols-4 lg:grid-cols-4";
+    gridColsClass = "md:grid-cols-4 lg:grid-cols-4"; // Adjusted for better fit
   }
 
 
@@ -216,7 +298,7 @@ function ReadingContent() {
             key={index}
             cardName={card.name}
             position={card.position}
-            isReversed={card.isReversed} // Pass the isReversed prop
+            isReversed={card.isReversed}
             isRevealed={revealedCards[index] || false}
             onReveal={() => handleRevealCard(index)}
           />
@@ -289,4 +371,4 @@ function LoadingFallback() {
     </PageWrapper>
   );
 }
-
+    
