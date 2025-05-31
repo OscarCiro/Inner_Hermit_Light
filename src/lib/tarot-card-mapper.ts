@@ -9,6 +9,7 @@ const majorArcanaSpanishToEnglish: Record<string, string> = {
   "El Emperador": "the_emperor",
   "El Hierofante": "the_hierophant",
   "El Papa": "the_hierophant", // Alias for Hierophant
+  "El Sumo Sacerdote": "the_hierophant", // Added for "El Sumo Sacerdote"
   "Los Enamorados": "the_lovers",
   "El Carro": "the_chariot",
   "La Fuerza": "strength",
