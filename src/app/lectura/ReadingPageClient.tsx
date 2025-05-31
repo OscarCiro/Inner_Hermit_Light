@@ -1,13 +1,14 @@
 
 "use client";
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { interpretTarotReading, InterpretTarotReadingOutput, InterpretTarotReadingInput } from '@/ai/flows/interpret-tarot-reading';
+import { synthesizeSpeech, SynthesizeSpeechOutput } from '@/ai/flows/synthesize-speech-flow';
 import PageWrapper from '@/components/layout/PageWrapper';
 import TarotCardDisplay from '@/components/tarot/TarotCardDisplay';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Home, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, RefreshCw, Home, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from '@/components/ui/separator';
 
@@ -21,44 +22,31 @@ function ReadingContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revealedCards, setRevealedCards] = useState<boolean[]>([]);
-  const [hasSpoken, setHasSpoken] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  useEffect(() => {
-    const loadVoices = () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        const voices = window.speechSynthesis.getVoices();
-        setAvailableVoices(voices);
-      }
-    };
-
-    loadVoices(); // Initial load
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices; // Listen for changes
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
-  }, []);
-
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [audioDataUri, setAudioDataUri] = useState<string | null>(null);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [autoPlayed, setAutoPlayed] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
-    setRevealedCards(Array(currentCardCount).fill(false)); 
+    setRevealedCards(Array(currentCardCount).fill(false));
+    
+    // Reset audio states for new reading
+    setAudioDataUri(null);
+    setSpeechError(null);
+    setIsAudioPlaying(false);
+    setAutoPlayed(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
 
     const fetchReading = async () => {
       setLoading(true);
       setError(null);
-      setHasSpoken(false); 
-      setIsSpeaking(false); 
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel(); 
-      }
-
       try {
         const input: InterpretTarotReadingInput = {
           query,
@@ -101,136 +89,79 @@ function ReadingContent() {
   
   const allCardsRevealed = reading && reading.cards && revealedCards.length > 0 && reading.cards.length === revealedCards.length && revealedCards.every(Boolean);
 
-  const getPreferredSpanishVoice = (): SpeechSynthesisVoice | null => {
-    if (!availableVoices.length) return null;
-
-    const spanishVoices = availableVoices.filter(voice => voice.lang.startsWith('es-'));
-    if (!spanishVoices.length) return null;
-
-    // Prioritize local, high-quality sounding names, then any Spanish voice
-    const qualityKeywords = ['google', 'microsoft', 'elena', 'paulina', 'jorge', 'diego'];
-    
-    let bestMatch: SpeechSynthesisVoice | null = null;
-
-    // 1. Local Spanish voices with quality keywords
-    bestMatch = spanishVoices.find(v => v.localService && qualityKeywords.some(kw => v.name.toLowerCase().includes(kw))) || null;
-    if (bestMatch) return bestMatch;
-
-    // 2. Any Spanish voice with quality keywords
-    bestMatch = spanishVoices.find(v => qualityKeywords.some(kw => v.name.toLowerCase().includes(kw))) || null;
-    if (bestMatch) return bestMatch;
-    
-    // 3. Local Spanish voices
-    bestMatch = spanishVoices.find(v => v.localService) || null;
-    if (bestMatch) return bestMatch;
-
-    // 4. First available 'es-ES' voice
-    bestMatch = spanishVoices.find(v => v.lang === 'es-ES') || null;
-    if (bestMatch) return bestMatch;
-
-    // 5. First available 'es-MX' voice
-    bestMatch = spanishVoices.find(v => v.lang === 'es-MX') || null;
-    if (bestMatch) return bestMatch;
-
-    // 6. Any Spanish voice
-    return spanishVoices[0];
-  };
-
-
   useEffect(() => {
-    let utteranceInstance: SpeechSynthesisUtterance | null = null;
-    let onSpeechStart: (() => void) | null = null;
-    let onSpeechEnd: (() => void) | null = null;
-    let onSpeechError: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
-
-    if (allCardsRevealed && reading?.interpretation && !hasSpoken && typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel(); 
-
-      utteranceInstance = new SpeechSynthesisUtterance(reading.interpretation);
-      utteranceInstance.lang = 'es-ES';
-      utteranceInstance.rate = 0.9; // Slightly slower
-      utteranceInstance.pitch = 1.0; // Default pitch
-
-      const preferredVoice = getPreferredSpanishVoice();
-      if (preferredVoice) {
-        utteranceInstance.voice = preferredVoice;
-      }
-
-      onSpeechStart = () => {
-        setIsSpeaking(true);
-      };
-      onSpeechEnd = () => {
-        setIsSpeaking(false);
-        setHasSpoken(true); 
-      };
-      onSpeechError = (event: SpeechSynthesisErrorEvent) => {
-        if (!(isSpeaking && event.error === "interrupted")) {
-          console.error('Speech synthesis error:', event.error);
+    const getSpeech = async () => {
+      if (allCardsRevealed && reading?.interpretation && !autoPlayed && !audioDataUri && !speechError) {
+        setIsSynthesizing(true);
+        setSpeechError(null);
+        try {
+          const speechResult: SynthesizeSpeechOutput = await synthesizeSpeech({ textToSynthesize: reading.interpretation });
+          if (speechResult.audioDataUri) {
+            setAudioDataUri(speechResult.audioDataUri);
+          } else {
+            console.error("Speech synthesis failed:", speechResult.error);
+            setSpeechError(speechResult.error || "Error al generar la narración.");
+          }
+        } catch (err: any) {
+          console.error("Error calling synthesizeSpeech flow:", err);
+          setSpeechError(err.message || "Error al contactar el servicio de narración.");
+        } finally {
+          setIsSynthesizing(false);
         }
-        setIsSpeaking(false);
-        setHasSpoken(true); 
-      };
-      
-      utteranceInstance.addEventListener('start', onSpeechStart);
-      utteranceInstance.addEventListener('end', onSpeechEnd);
-      utteranceInstance.addEventListener('error', onSpeechError);
-      
-      // Delay slightly to ensure voice selection takes effect if voices loaded async
-      setTimeout(() => {
-         if (utteranceInstance && !isSpeaking && allCardsRevealed && !hasSpoken) { // Check state again before speaking
-            window.speechSynthesis.speak(utteranceInstance);
-         }
-      }, 100);
-    }
-
-    return () => {
-      if (utteranceInstance && onSpeechStart && onSpeechEnd && onSpeechError) {
-        utteranceInstance.removeEventListener('start', onSpeechStart);
-        utteranceInstance.removeEventListener('end', onSpeechEnd);
-        utteranceInstance.removeEventListener('error', onSpeechError);
-         if (isSpeaking) { 
-           window.speechSynthesis.cancel();
-           setIsSpeaking(false);
-         }
       }
     };
-  }, [allCardsRevealed, reading?.interpretation, hasSpoken, availableVoices]);
+    getSpeech();
+  }, [allCardsRevealed, reading?.interpretation, autoPlayed, audioDataUri, speechError]);
+
+  useEffect(() => {
+    if (audioDataUri && audioRef.current && !autoPlayed) {
+      audioRef.current.src = audioDataUri;
+      audioRef.current.play().then(() => {
+        setAutoPlayed(true);
+      }).catch(playError => {
+        console.error("Error auto-playing audio:", playError);
+        setSpeechError("No se pudo reproducir la narración automáticamente. Haz clic en el botón de volumen.");
+      });
+    }
+  }, [audioDataUri, autoPlayed]);
 
 
   const toggleSpeech = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation) {
-      if (isSpeaking) {
-        window.speechSynthesis.cancel();
-        // setIsSpeaking(false) will be handled by onend or onerror event of the utterance
+    if (audioRef.current && audioDataUri) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
       } else {
-        window.speechSynthesis.cancel(); 
-        
-        const utterance = new SpeechSynthesisUtterance(reading.interpretation);
-        utterance.lang = 'es-ES';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-
-        const preferredVoice = getPreferredSpanishVoice();
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
+        // If paused and at the end, reset time to play from start
+        if(audioRef.current.ended || audioRef.current.currentTime === audioRef.current.duration) {
+            audioRef.current.currentTime = 0;
         }
-        
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => {
-          setIsSpeaking(false);
-          // setHasSpoken(true); // User manually triggered, maybe they want to replay
-        };
-        utterance.onerror = (event) => {
-          if (!(isSpeaking && event.error === "interrupted")) { 
-             console.error('Speech synthesis error on toggle:', event.error);
-          }
-          setIsSpeaking(false);
-        };
-        // Delay slightly to ensure voice selection takes effect
-        setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-        }, 100);
+        audioRef.current.play().catch(playError => {
+           console.error("Error playing audio on toggle:", playError);
+           setSpeechError("No se pudo reproducir la narración.");
+        });
       }
+    } else if (allCardsRevealed && reading?.interpretation && !audioDataUri && !isSynthesizing) {
+      // If audio not yet synthesized, trigger synthesis
+       const getSpeech = async () => {
+        setIsSynthesizing(true);
+        setSpeechError(null);
+        try {
+          const speechResult: SynthesizeSpeechOutput = await synthesizeSpeech({ textToSynthesize: reading.interpretation });
+          if (speechResult.audioDataUri) {
+            setAudioDataUri(speechResult.audioDataUri);
+            // Audio will auto-play via the other useEffect once audioDataUri is set
+          } else {
+            console.error("Speech synthesis failed on toggle:", speechResult.error);
+            setSpeechError(speechResult.error || "Error al generar la narración.");
+          }
+        } catch (err: any) {
+          console.error("Error calling synthesizeSpeech flow on toggle:", err);
+          setSpeechError(err.message || "Error al contactar el servicio de narración.");
+        } finally {
+          setIsSynthesizing(false);
+        }
+      };
+      getSpeech();
     }
   };
 
@@ -270,9 +201,9 @@ function ReadingContent() {
 
   let gridColsClass = "sm:grid-cols-3 md:grid-cols-3"; 
   if (reading.cards.length === 5) {
-    gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
+    gridColsClass = "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-    gridColsClass = "md:grid-cols-4 lg:grid-cols-4"; // Adjusted for better fit
+    gridColsClass = "sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4"; 
   }
 
 
@@ -292,7 +223,19 @@ function ReadingContent() {
         <p className="text-lg text-foreground/80">Las cartas han hablado. Escucha su mensaje.</p>
       </header>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridColsClass} gap-4 md:gap-6 mb-10 justify-items-center`}>
+      <audio 
+        ref={audioRef} 
+        onPlay={() => setIsAudioPlaying(true)}
+        onPause={() => setIsAudioPlaying(false)}
+        onEnded={() => setIsAudioPlaying(false)}
+        onError={() => {
+          setSpeechError("Error al reproducir la narración.");
+          setIsAudioPlaying(false);
+        }}
+        className="hidden" // Keep it hidden
+      />
+
+      <div className={`grid grid-cols-1 ${gridColsClass} gap-4 md:gap-6 mb-10 justify-items-center`}>
         {reading.cards.map((card, index) => (
           <TarotCardDisplay
             key={index}
@@ -309,12 +252,25 @@ function ReadingContent() {
         <section className="mt-8 p-6 bg-background/50 rounded-lg shadow-inner border border-primary/20 animate-fadeIn">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-serif text-accent">Interpretación del Ermitaño:</h2>
-            {typeof window !== 'undefined' && 'speechSynthesis' in window && reading?.interpretation && (
-              <Button onClick={toggleSpeech} variant="outline" size="icon" aria-label={isSpeaking ? "Detener narración" : "Escuchar narración"}>
-                {isSpeaking ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            {(reading?.interpretation && (audioDataUri || isSynthesizing || speechError)) && (
+              <Button 
+                onClick={toggleSpeech} 
+                variant="outline" 
+                size="icon" 
+                aria-label={isAudioPlaying ? "Detener narración" : "Escuchar narración"}
+                disabled={isSynthesizing}
+              >
+                {isSynthesizing ? <Loader2 className="h-5 w-5 animate-spin" /> : (isAudioPlaying ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />)}
               </Button>
             )}
           </div>
+          {speechError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error de Narración</AlertTitle>
+              <AlertDescription>{speechError}</AlertDescription>
+            </Alert>
+          )}
           <div className="prose prose-invert text-foreground/90 max-w-none whitespace-pre-line text-left leading-relaxed">
             {reading.interpretation.split('\n').map((paragraph, index) => (
               <p key={index} className="mb-3">{paragraph}</p>
@@ -371,4 +327,6 @@ function LoadingFallback() {
     </PageWrapper>
   );
 }
+    
+
     
