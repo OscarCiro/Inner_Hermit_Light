@@ -17,23 +17,23 @@ const TarotInterpretationInputSchema = z.object({
   query: z
     .string()
     .describe(
-      'The user query to use as a tarot reading. If empty, the cards will speak freely.'
+      'La consulta del usuario para la lectura de tarot. Si está vacía, las cartas hablarán libremente.'
     ),
-  numCards: z.enum(['3', '5', '7']).describe('The number of cards for the reading (3, 5, or 7).')
+  numCards: z.enum(['3', '5', '7']).describe('El número de cartas para la lectura (3, 5, o 7).')
 });
 export type TarotInterpretationInput = z.infer<
   typeof TarotInterpretationInputSchema
 >;
 
 const TarotInterpretationOutputSchema = z.object({
-  interpretation: z.string().describe('The overall interpretation of the tarot reading, considering all cards drawn based on the selected spread, and accounting for any reversed cards.'),
+  interpretation: z.string().describe('La interpretación general de la lectura de tarot, considerando todas las cartas extraídas según la tirada seleccionada, y teniendo en cuenta las cartas invertidas.'),
   cards: z.array(
     z.object({
-      name: z.string().describe('The name of the tarot card drawn.'),
-      position: z.string().describe('The position or meaning of the card in the context of the chosen spread (e.g., "Pasado", "Desafío Actual", etc.).'),
-      isReversed: z.boolean().describe('Indicates if the card is drawn in a reversed (upside down) position.')
+      name: z.string().describe('El NOMBRE EN ESPAÑOL de la carta de tarot extraída (ej. "El Loco", "As de Espadas").'),
+      position: z.string().describe('La posición o significado de la carta en el contexto de la tirada elegida (ej. "Pasado", "Desafío Actual", etc.).'),
+      isReversed: z.boolean().describe('Indica si la carta se extrae en posición invertida (al revés).')
     })
-  ).describe('An array of cards drawn, including their names, their defined positions or meanings within the spread, and whether they are reversed.')
+  ).describe('Un array de cartas extraídas, incluyendo sus nombres EN ESPAÑOL, sus posiciones o significados definidos dentro de la tirada, y si están invertidas.')
 });
 export type TarotInterpretationOutput = z.infer<
   typeof TarotInterpretationOutputSchema
@@ -46,7 +46,7 @@ export async function tarotInterpretation(
 }
 
 const prompt = ai.definePrompt({
-  name: 'tarotInterpretationPrompt', // Note: Prompt name differs slightly, but functionality is the same
+  name: 'tarotInterpretationPrompt', 
   input: {schema: TarotInterpretationInputSchema},
   output: {schema: TarotInterpretationOutputSchema},
   prompt: `Encarna la personalidad de un experimentado 'Tarotista' que no solo lee las cartas, sino que interpreta las energías que las impregnan. Tu pasión es guiar a las personas a través de los mensajes del Tarot, brindando claridad y empoderamiento para que tomen decisiones conscientes.
@@ -65,7 +65,7 @@ c) Menciona que la lectura se basará en la tirada de {{{numCards}}} cartas que 
 d) Pregunta al usuario sobre la situación o pregunta específica que le gustaría explorar (si el usuario escribió algo en el campo de texto, utilízalo; de lo contrario, indica que las cartas hablarán libremente para la tirada de {{{numCards}}} cartas).
 
 Lectura e Interpretación:
-a) Realiza una lectura concisa y un análisis de las energías que influyen en la situación del consultante. Simula la selección aleatoria de {{{numCards}}} cartas de tarot. Para cada carta, hay una probabilidad de aproximadamente 10-15% de que aparezca invertida (al revés). Incluye sus nombres, sus posiciones interpretativas según el tipo de tirada, y si la carta está invertida. NO describas las imágenes de las cartas.
+a) Realiza una lectura concisa y un análisis de las energías que influyen en la situación del consultante. Simula la selección aleatoria de {{{numCards}}} cartas de tarot. Para cada carta, hay una probabilidad de aproximadamente 10-15% de que aparezca invertida (al revés). Incluye sus nombres (EN ESPAÑOL, ej. "El Loco", "As de Copas"), sus posiciones interpretativas según el tipo de tirada, y si la carta está invertida. NO describas las imágenes de las cartas.
 b) Las posiciones de las cartas son:
    - Si numCards es '3' (Triada):
      1. Pasado: Orígenes de la situación, influencias previas.
@@ -88,7 +88,7 @@ b) Las posiciones de las cartas son:
 c) Si una carta está invertida, su significado se matiza. A menudo indica una energía bloqueada, internalizada, retrasada o un desafío particular relacionado con el arquetipo de la carta. Tu interpretación de la carta en su posición debe reflejar esta inversión.
 d) No te limites a predecir el futuro, sino que guía al usuario para que se conecte con su intuición y descubra su propio poder.
 e) Ofrece orientación práctica y sugerencias para que el usuario pueda tomar decisiones conscientes.
-f) Genera una interpretación general que conecte todas las cartas de la tirada, teniendo en cuenta las cartas invertidas.
+f) Genera una interpretación general EN ESPAÑOL que conecte todas las cartas de la tirada, teniendo en cuenta las cartas invertidas.
 
 Cierre de la Consulta:
 a) Agradece al usuario por su confianza y apertura.
@@ -105,28 +105,29 @@ Mantén un enfoque positivo y esperanzador.
 User Query: {{{query}}}
 Number of cards for reading: {{{numCards}}}
 
-Output in JSON format. The "cards" field MUST be an array of objects, each object containing "name" (string, name of the card), "position" (string, the defined position for that card from the list above based on numCards), and "isReversed" (boolean, true if the card is upside down, false otherwise). The "interpretation" field should be a comprehensive interpretation string reflecting any reversed cards. Ensure you provide exactly {{{numCards}}} cards in the "cards" array.
+Output in JSON format. The "cards" field MUST be an array of objects, each object containing "name" (string, el NOMBRE EN ESPAÑOL de la carta de tarot, por ejemplo, "El Loco", "As de Espadas"), "position" (string, the defined position for that card from the list above based on numCards), and "isReversed" (boolean, true si la carta está invertida, false en caso contrario). The "interpretation" field should be a comprehensive interpretation string EN ESPAÑOL reflecting any reversed cards. Ensure you provide exactly {{{numCards}}} cards in the "cards" array.
 `,
 });
 
 const tarotInterpretationFlow = ai.defineFlow(
   {
-    name: 'tarotInterpretationFlow', // Note: Flow name differs
+    name: 'tarotInterpretationFlow',
     inputSchema: TarotInterpretationInputSchema,
     outputSchema: TarotInterpretationOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
     if (output && Array.isArray(output.cards) && output.cards.length === parseInt(input.numCards, 10)) {
-      const allCardsValid = output.cards.every(card => typeof card.isReversed === 'boolean');
+      const allCardsValid = output.cards.every(card => typeof card.isReversed === 'boolean' && typeof card.name === 'string' && card.name.length > 0);
       if (allCardsValid) {
         return output!;
       }
-      console.error("AI output validation failed in tarotInterpretationFlow: one or more cards missing 'isReversed' property.", { cardsOutput: output?.cards });
+      console.error("AI output validation failed in tarotInterpretationFlow: one or more cards missing 'isReversed' property or 'name' is invalid.", { cardsOutput: output?.cards });
     } else {
       console.error("AI output validation failed or card count mismatch in tarotInterpretationFlow", { numCardsInput: input.numCards, cardsOutput: output?.cards?.length });
     }
-    return output || { interpretation: "Error en la generación de la lectura. No se pudo procesar la orientación de las cartas.", cards: [] };
+    return output || { interpretation: "Error en la generación de la lectura. No se pudo procesar la información de las cartas.", cards: [] };
   }
 );
 
+    
