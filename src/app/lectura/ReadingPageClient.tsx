@@ -47,9 +47,9 @@ function ReadingContent() {
         
         const actualCardCountFromResult = result.cards?.length || 0;
 
-        if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10)) {
-          console.error("Card count mismatch or missing cards", { expected: numCardsParam, actual: actualCardCountFromResult });
-          setError("La lectura generada no contiene el número esperado de cartas. Por favor, intenta de nuevo.");
+        if (!result.cards || actualCardCountFromResult !== parseInt(numCardsParam, 10) || !result.cards.every(card => typeof card.isReversed === 'boolean')) {
+          console.error("Card count mismatch, missing cards, or missing isReversed property", { expected: numCardsParam, actual: actualCardCountFromResult, cards: result.cards });
+          setError("La lectura generada no es válida. Por favor, intenta de nuevo.");
           setReading(null);
           setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
         } else {
@@ -100,8 +100,6 @@ function ReadingContent() {
         setHasSpoken(true); 
       };
       onSpeechError = (event: SpeechSynthesisErrorEvent) => {
-        // If speech was active and the error is "interrupted",
-        // it's often due to an explicit cancel(). We choose not to log this as a critical error.
         if (!(isSpeaking && event.error === "interrupted")) {
           console.error('Speech synthesis error:', event.error);
         }
@@ -121,9 +119,13 @@ function ReadingContent() {
         utteranceInstance.removeEventListener('start', onSpeechStart);
         utteranceInstance.removeEventListener('end', onSpeechEnd);
         utteranceInstance.removeEventListener('error', onSpeechError);
+         if (isSpeaking) { // Ensure to cancel speech if component unmounts while speaking
+           window.speechSynthesis.cancel();
+           setIsSpeaking(false);
+         }
       }
     };
-  }, [allCardsRevealed, reading?.interpretation, hasSpoken]);
+  }, [allCardsRevealed, reading?.interpretation, hasSpoken]); // Removed isSpeaking from dependencies
 
 
   const toggleSpeech = () => {
@@ -184,22 +186,17 @@ function ReadingContent() {
     );
   }
 
-  // Base classes for the grid: "grid grid-cols-1 sm:grid-cols-2"
-  // gridColsClass will add responsive classes for md and lg.
-  let gridColsClass = "sm:grid-cols-3 md:grid-cols-3"; // Default for 3 cards (sm:grid-cols-3 overrides base sm:grid-cols-2)
-
+  let gridColsClass = "sm:grid-cols-3 md:grid-cols-3"; 
   if (reading.cards.length === 5) {
-    // For 5 cards: grid-cols-1 sm:grid-cols-2 (base) md:grid-cols-3 lg:grid-cols-5
     gridColsClass = "md:grid-cols-3 lg:grid-cols-5";
   } else if (reading.cards.length === 7) {
-    // For 7 cards: grid-cols-1 sm:grid-cols-2 (base) md:grid-cols-4 lg:grid-cols-4
     gridColsClass = "md:grid-cols-4 lg:grid-cols-4";
   }
 
 
   return (
     <PageWrapper 
-      contentClassName="max-w-5xl" // Widen the content area
+      contentClassName="max-w-5xl" 
       className="bg-card/30 backdrop-blur-md" 
       style={{
         backgroundImage: "radial-gradient(circle, hsl(var(--muted)/0.1) 1px, transparent 1px), radial-gradient(circle, hsl(var(--muted)/0.05) 1px, transparent 1px)",
@@ -219,6 +216,7 @@ function ReadingContent() {
             key={index}
             cardName={card.name}
             position={card.position}
+            isReversed={card.isReversed} // Pass the isReversed prop
             isRevealed={revealedCards[index] || false}
             onReveal={() => handleRevealCard(index)}
           />
@@ -291,3 +289,4 @@ function LoadingFallback() {
     </PageWrapper>
   );
 }
+

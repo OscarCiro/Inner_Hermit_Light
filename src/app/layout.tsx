@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AnimatedBackgroundStars } from '@/components/layout/AnimatedBackgroundStars';
-import SpotifyPlayer from '@/components/layout/SpotifyPlayer'; // Added SpotifyPlayer import
 import { cn } from '@/lib/utils';
 
 // Removed cinzel and openSans constant declarations
@@ -30,7 +29,6 @@ export default function RootLayout({
         <main className="flex-grow flex flex-col">
           {children}
         </main>
-        <SpotifyPlayer /> {/* Added SpotifyPlayer component */}
         <Toaster />
       </body>
     </html>

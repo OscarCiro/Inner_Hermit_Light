@@ -26,13 +26,14 @@ export type TarotInterpretationInput = z.infer<
 >;
 
 const TarotInterpretationOutputSchema = z.object({
-  interpretation: z.string().describe('The overall interpretation of the tarot reading, considering all cards drawn based on the selected spread.'),
+  interpretation: z.string().describe('The overall interpretation of the tarot reading, considering all cards drawn based on the selected spread, and accounting for any reversed cards.'),
   cards: z.array(
     z.object({
       name: z.string().describe('The name of the tarot card drawn.'),
-      position: z.string().describe('The position or meaning of the card in the context of the chosen spread (e.g., "Pasado", "Desafío Actual", etc.).')
+      position: z.string().describe('The position or meaning of the card in the context of the chosen spread (e.g., "Pasado", "Desafío Actual", etc.).'),
+      isReversed: z.boolean().describe('Indicates if the card is drawn in a reversed (upside down) position.')
     })
-  ).describe('An array of cards drawn, including their names and their defined positions or meanings within the spread.')
+  ).describe('An array of cards drawn, including their names, their defined positions or meanings within the spread, and whether they are reversed.')
 });
 export type TarotInterpretationOutput = z.infer<
   typeof TarotInterpretationOutputSchema
@@ -64,7 +65,7 @@ c) Menciona que la lectura se basará en la tirada de {{{numCards}}} cartas que 
 d) Pregunta al usuario sobre la situación o pregunta específica que le gustaría explorar (si el usuario escribió algo en el campo de texto, utilízalo; de lo contrario, indica que las cartas hablarán libremente para la tirada de {{{numCards}}} cartas).
 
 Lectura e Interpretación:
-a) Realiza una lectura concisa y un análisis de las energías que influyen en la situación del consultante. Simula la selección aleatoria de {{{numCards}}} cartas de tarot. Incluye sus nombres y sus posiciones interpretativas según el tipo de tirada. NO describas las imágenes de las cartas.
+a) Realiza una lectura concisa y un análisis de las energías que influyen en la situación del consultante. Simula la selección aleatoria de {{{numCards}}} cartas de tarot. Para cada carta, hay una probabilidad de aproximadamente 10-15% de que aparezca invertida (al revés). Incluye sus nombres, sus posiciones interpretativas según el tipo de tirada, y si la carta está invertida. NO describas las imágenes de las cartas.
 b) Las posiciones de las cartas son:
    - Si numCards es '3' (Triada):
      1. Pasado: Orígenes de la situación, influencias previas.
@@ -84,9 +85,10 @@ b) Las posiciones de las cartas son:
      5. Entorno/Influencias Externas: Factores o personas externas que impactan la situación.
      6. Consejo o Acción Clave: El mejor curso de acción o la lección a aprender.
      7. Futuro Probable: El resultado más probable si se mantiene el curso actual y se considera el consejo.
-c) No te limites a predecir el futuro, sino que guía al usuario para que se conecte con su intuición y descubra su propio poder.
-d) Ofrece orientación práctica y sugerencias para que el usuario pueda tomar decisiones conscientes.
-e) Genera una interpretación general que conecte todas las cartas de la tirada.
+c) Si una carta está invertida, su significado se matiza. A menudo indica una energía bloqueada, internalizada, retrasada o un desafío particular relacionado con el arquetipo de la carta. Tu interpretación de la carta en su posición debe reflejar esta inversión.
+d) No te limites a predecir el futuro, sino que guía al usuario para que se conecte con su intuición y descubra su propio poder.
+e) Ofrece orientación práctica y sugerencias para que el usuario pueda tomar decisiones conscientes.
+f) Genera una interpretación general que conecte todas las cartas de la tirada, teniendo en cuenta las cartas invertidas.
 
 Cierre de la Consulta:
 a) Agradece al usuario por su confianza y apertura.
@@ -103,7 +105,7 @@ Mantén un enfoque positivo y esperanzador.
 User Query: {{{query}}}
 Number of cards for reading: {{{numCards}}}
 
-Output in JSON format. The "cards" field MUST be an array of objects, each object containing "name" (string, name of the card) and "position" (string, the defined position for that card from the list above based on numCards). The "interpretation" field should be a comprehensive interpretation string. Ensure you provide exactly {{{numCards}}} cards in the "cards" array.
+Output in JSON format. The "cards" field MUST be an array of objects, each object containing "name" (string, name of the card), "position" (string, the defined position for that card from the list above based on numCards), and "isReversed" (boolean, true if the card is upside down, false otherwise). The "interpretation" field should be a comprehensive interpretation string reflecting any reversed cards. Ensure you provide exactly {{{numCards}}} cards in the "cards" array.
 `,
 });
 
@@ -116,9 +118,15 @@ const tarotInterpretationFlow = ai.defineFlow(
   async input => {
     const {output} = await prompt(input);
     if (output && Array.isArray(output.cards) && output.cards.length === parseInt(input.numCards, 10)) {
-      return output!;
+      const allCardsValid = output.cards.every(card => typeof card.isReversed === 'boolean');
+      if (allCardsValid) {
+        return output!;
+      }
+      console.error("AI output validation failed in tarotInterpretationFlow: one or more cards missing 'isReversed' property.", { cardsOutput: output?.cards });
+    } else {
+      console.error("AI output validation failed or card count mismatch in tarotInterpretationFlow", { numCardsInput: input.numCards, cardsOutput: output?.cards?.length });
     }
-    console.error("AI output validation failed or card count mismatch in tarotInterpretationFlow", { numCardsInput: input.numCards, cardsOutput: output?.cards?.length });
-    return output || { interpretation: "Error en la generación de la lectura.", cards: [] };
+    return output || { interpretation: "Error en la generación de la lectura. No se pudo procesar la orientación de las cartas.", cards: [] };
   }
 );
+

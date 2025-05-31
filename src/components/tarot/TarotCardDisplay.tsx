@@ -10,11 +10,12 @@ import { Eye } from 'lucide-react';
 import { getTarotCardImagePathAndAiHint } from '@/lib/tarot-card-mapper';
 
 interface TarotCardDisplayProps {
-  cardName: string; // This will be the Spanish name from the AI
-  position: string; // e.g., "Pasado", "Presente", "Futuro"
+  cardName: string;
+  position: string;
   initiallyRevealed?: boolean;
   onReveal?: () => void;
   isRevealed?: boolean;
+  isReversed?: boolean; // New prop for reversed status
 }
 
 const cardBackImageSrc = '/tarot-cards/default-card.jpg'; 
@@ -25,6 +26,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
   initiallyRevealed = false,
   onReveal,
   isRevealed: controlledRevealed,
+  isReversed = false, // Default to false
 }) => {
   const [internalRevealed, setInternalRevealed] = useState(initiallyRevealed);
   const isRevealed = controlledRevealed !== undefined ? controlledRevealed : internalRevealed;
@@ -37,7 +39,6 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     }
   };
 
-  // Get image path and AI hint using the mapper
   const { path: revealedImageSrc, hint: aiHint } = getTarotCardImagePathAndAiHint(cardName);
 
   return (
@@ -49,7 +50,7 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
     role="button"
     tabIndex={!isRevealed ? 0 : -1}
     aria-pressed={isRevealed}
-    aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}`}
+    aria-label={!isRevealed ? `Revelar carta: ${position} - ${cardName}` : `Carta revelada: ${position} - ${cardName}${isReversed ? " (Invertida)" : ""}`}
     >
       <CardHeader className="p-1 text-center w-full">
         <CardTitle className="text-xs font-serif text-primary leading-tight">{position}</CardTitle>
@@ -79,10 +80,13 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
           <div className="flex flex-col items-center text-center">
             <Image
               src={revealedImageSrc}
-              alt={`Carta ${cardName} - ${position}`} 
+              alt={`Carta ${cardName} - ${position}${isReversed ? " (Invertida)" : ""}`} 
               width={110} 
               height={165} 
-              className="rounded-md object-contain"
+              className={cn(
+                "rounded-md object-contain",
+                isReversed ? "transform rotate-180" : "" // Rotate image if reversed
+              )}
               data-ai-hint={aiHint} 
               onError={(e) => {
                 console.error(`Error loading image for ${cardName} at ${revealedImageSrc}. Falling back to default card image. Ensure 'public${revealedImageSrc}' and 'public/tarot-cards/default-card.jpg' exist.`);
@@ -101,3 +105,4 @@ const TarotCardDisplay: React.FC<TarotCardDisplayProps> = ({
 };
 
 export default TarotCardDisplay;
+
