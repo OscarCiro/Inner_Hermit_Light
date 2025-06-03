@@ -34,7 +34,6 @@ function ReadingContent() {
     const currentCardCount = parseInt(searchParams.get('numCards') || '3', 10);
     setRevealedCards(Array(currentCardCount).fill(false));
     
-    // Reset audio states for new reading
     setAudioDataUri(null);
     setSpeechError(null);
     setIsAudioPlaying(false);
@@ -91,7 +90,7 @@ function ReadingContent() {
 
   useEffect(() => {
     const getSpeech = async () => {
-      if (allCardsRevealed && reading?.interpretation && !autoPlayed && !audioDataUri && !speechError) {
+      if (allCardsRevealed && reading?.interpretation && !autoPlayed && !audioDataUri && !speechError && !isSynthesizing) {
         setIsSynthesizing(true);
         setSpeechError(null);
         try {
@@ -111,19 +110,20 @@ function ReadingContent() {
       }
     };
     getSpeech();
-  }, [allCardsRevealed, reading?.interpretation, autoPlayed, audioDataUri, speechError]);
+  }, [allCardsRevealed, reading, autoPlayed, audioDataUri, speechError, isSynthesizing]);
 
   useEffect(() => {
-    if (audioDataUri && audioRef.current && !autoPlayed) {
+    if (audioDataUri && audioRef.current && !autoPlayed && !isAudioPlaying) {
       audioRef.current.src = audioDataUri;
       audioRef.current.play().then(() => {
         setAutoPlayed(true);
+        setIsAudioPlaying(true);
       }).catch(playError => {
         console.error("Error auto-playing audio:", playError);
         setSpeechError("No se pudo reproducir la narración automáticamente. Haz clic en el botón de volumen.");
       });
     }
-  }, [audioDataUri, autoPlayed]);
+  }, [audioDataUri, autoPlayed, isAudioPlaying]);
 
 
   const toggleSpeech = () => {
@@ -131,7 +131,6 @@ function ReadingContent() {
       if (isAudioPlaying) {
         audioRef.current.pause();
       } else {
-        // If paused and at the end, reset time to play from start
         if(audioRef.current.ended || audioRef.current.currentTime === audioRef.current.duration) {
             audioRef.current.currentTime = 0;
         }
@@ -141,7 +140,6 @@ function ReadingContent() {
         });
       }
     } else if (allCardsRevealed && reading?.interpretation && !audioDataUri && !isSynthesizing) {
-      // If audio not yet synthesized, trigger synthesis
        const getSpeech = async () => {
         setIsSynthesizing(true);
         setSpeechError(null);
@@ -149,7 +147,6 @@ function ReadingContent() {
           const speechResult: SynthesizeSpeechOutput = await synthesizeSpeech({ textToSynthesize: reading.interpretation });
           if (speechResult.audioDataUri) {
             setAudioDataUri(speechResult.audioDataUri);
-            // Audio will auto-play via the other useEffect once audioDataUri is set
           } else {
             console.error("Speech synthesis failed on toggle:", speechResult.error);
             setSpeechError(speechResult.error || "Error al generar la narración.");
@@ -163,6 +160,23 @@ function ReadingContent() {
       };
       getSpeech();
     }
+  };
+
+  const handleContinueToIntegration = () => {
+    if (reading) {
+      try {
+        localStorage.setItem('currentTarotReading', JSON.stringify(reading));
+        localStorage.setItem('currentTarotQuery', query);
+        if (audioDataUri) {
+          localStorage.setItem('currentTarotAudio', audioDataUri);
+        } else {
+          localStorage.removeItem('currentTarotAudio');
+        }
+      } catch (e) {
+        console.error("Error saving reading to localStorage:", e);
+      }
+    }
+    router.push('/integracion');
   };
 
 
@@ -232,7 +246,7 @@ function ReadingContent() {
           setSpeechError("Error al reproducir la narración.");
           setIsAudioPlaying(false);
         }}
-        className="hidden" // Keep it hidden
+        className="hidden"
       />
 
       <div className={`grid grid-cols-1 ${gridColsClass} gap-4 md:gap-6 mb-10 justify-items-center`}>
@@ -290,7 +304,7 @@ function ReadingContent() {
         <div className="mt-12 w-full">
           <Separator className="my-6 bg-primary/30" />
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button onClick={() => router.push('/integracion')} size="lg" className="text-lg">
+            <Button onClick={handleContinueToIntegration} size="lg" className="text-lg">
               Continuar a Integración
             </Button>
              <Button onClick={() => router.push('/consulta')} variant="outline" size="lg">

@@ -1,22 +1,92 @@
+
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/layout/PageWrapper';
 import { useToast } from "@/hooks/use-toast";
 import { Save, Share2, Repeat, Home } from 'lucide-react';
+import { InterpretTarotReadingOutput } from '@/ai/flows/interpret-tarot-reading'; // Assuming this type exists
+import { db } from '@/lib/firebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getTarotCardImagePathAndAiHint } from '@/lib/tarot-card-mapper';
+
 
 const IntegrationClient: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
+  const [currentReading, setCurrentReading] = useState<InterpretTarotReadingOutput | null>(null);
+  const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [currentAudioUri, setCurrentAudioUri] = useState<string | null>(null);
 
-  const handleSaveReading = () => {
-    toast({
-      title: "Función en Camino",
-      description: "Guardar lectura aún no está implementado. ¡Pronto estará disponible!",
-      variant: "default",
-    });
+  useEffect(() => {
+    try {
+      const storedReading = localStorage.getItem('currentTarotReading');
+      const storedQuery = localStorage.getItem('currentTarotQuery');
+      const storedAudio = localStorage.getItem('currentTarotAudio');
+
+      if (storedReading) {
+        setCurrentReading(JSON.parse(storedReading));
+      }
+      if (storedQuery) {
+        setCurrentQuery(storedQuery);
+      }
+      if (storedAudio) {
+        setCurrentAudioUri(storedAudio);
+      }
+    } catch (e) {
+      console.error("Error reading from localStorage:", e);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de la lectura anterior.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const handleSaveReading = async () => {
+    if (!currentReading) {
+      toast({ title: "Error", description: "No hay datos de lectura para guardar.", variant: "destructive" });
+      return;
+    }
+
+    // Example: if (!user) {
+    //   toast({ title: "Error", description: "Debes iniciar sesión para guardar.", variant: "destructive" });
+    //   return;
+    // }
+
+    try {
+      await addDoc(collection(db, "tarotReadings"), {
+        // userId: user.uid, // If auth is implemented
+        query: currentQuery,
+        numCards: currentReading.cards.length,
+        interpretation: currentReading.interpretation,
+        cards: currentReading.cards.map(card => ({
+          name: card.name,
+          position: card.position,
+          isReversed: card.isReversed,
+          imagePath: getTarotCardImagePathAndAiHint(card.name).path
+        })),
+        createdAt: serverTimestamp(),
+        audioDataUri: currentAudioUri, 
+      });
+      toast({
+        title: "Lectura Guardada",
+        description: "Tu viaje místico ha sido atesorado.",
+      });
+      // Optionally clear localStorage after saving
+      // localStorage.removeItem('currentTarotReading');
+      // localStorage.removeItem('currentTarotQuery');
+      // localStorage.removeItem('currentTarotAudio');
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      toast({
+        title: "Error al Guardar",
+        description: "No se pudo guardar tu lectura. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShare = () => {
@@ -50,7 +120,7 @@ const IntegrationClient: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-2xl mb-12">
-        <Button onClick={handleSaveReading} variant="outline" className="text-md">
+        <Button onClick={handleSaveReading} variant="outline" className="text-md" disabled={!currentReading}>
           <Save className="mr-2 h-5 w-5" />
           Guardar Lectura
         </Button>
