@@ -1,7 +1,7 @@
 // src/lib/firebaseConfig.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth'; // Si usarás autenticación
+// import { getAuth } from 'firebase/auth'; // Si usarás autenticación
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,6 +15,7 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
-const auth = getAuth(app); // Si usarás autenticación
+// const auth = getAuth(app); // Si usarás autenticación
 
-export { db, auth };
+export { db }; // Temporarily remove auth from exports
+// export { db, auth };
