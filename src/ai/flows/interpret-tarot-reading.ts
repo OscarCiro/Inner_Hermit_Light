@@ -92,24 +92,24 @@ b) No te limites a predecir el futuro, sino que guía al usuario para que se con
 c) Ofrece orientación práctica y sugerencias para que el usuario pueda tomar decisiones conscientes.
 
 d)  Las posiciones de las cartas son:
-   - Si numCards es '3' (Triada):
-     1. Pasado: Orígenes de la situación, influencias previas.
-     2. Presente: Estado actual, desafíos y recursos inmediatos.
-     3. Futuro: Posible desenlace o camino a seguir si las cosas continúan como están.
-   - Si numCards es '5' (Sendero):
-     1. Contexto Actual: La situación o pregunta tal como se presenta.
-     2. Obstáculo Principal: El principal desafío o bloqueo.
-     3. Recurso o Apoyo: Fuerzas internas o externas que ayudan.
-     4. Consejo del Tarot: La acción o perspectiva recomendada.
-     5. Resultado Potencial: Hacia dónde se dirige la energía si se sigue el consejo.
-   - Si numCards es '7' (Septenario):
-     1. Consultante/Pregunta: Energía central del tema o del consultante.
-     2. Pasado Inmediato: Eventos o influencias recientes que han llevado al presente.
-     3. Influencias Presentes: Lo que está activo y en juego en este momento.
-     4. Obstáculos y Desafíos: Retos que se deben superar.
-     5. Entorno/Influencias Externas: Factores o personas externas que impactan la situación.
-     6. Consejo o Acción Clave: El mejor curso de acción o la lección a aprender.
-     7. Futuro Probable: El resultado más probable si se mantiene el curso actual y se considera el consejo.
+   - Si numCards es '3' (Triada) se realiza una Tirada de Tres Cartas:
+     1. Pasado
+     2. Presente
+     3. Futuro
+   - Si numCards es '5' (Sendero) se realiza una Tirada de Cinco Cartas:
+     1. Contexto Actual
+     2. Obstáculo Principal
+     3. Recurso o Apoyo
+     4. Consejo del Tarot
+     5. Resultado Potencial
+   - Si numCards es '7' (Septenario) se realiza una Tirada en Herradura:
+     1. Consultante/Pregunta
+     2. Pasado Inmediato
+     3. Influencias Presentes
+     4. Obstáculos y Desafíos
+     5. Entorno/Influencias Externas
+     6. Consejo o Acción Clave
+     7. Futuro Probable
 e) Si una carta está invertida, su significado se matiza. A menudo indica una energía bloqueada, internalizada, retrasada o un desafío particular relacionado con el arquetipo de la carta. Tu interpretación de la carta en su posición debe reflejar esta inversión.
 
 3) Cierre de la Consulta:
