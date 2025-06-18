@@ -6,6 +6,7 @@ import { AnimatedBackgroundStars } from '@/components/layout/AnimatedBackgroundS
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/context/AuthContext';
 import Header from '@/components/layout/Header'; // Import the Header
+import BackgroundAudioPlayer from '@/components/layout/BackgroundAudioPlayer'; // Import BackgroundAudioPlayer
 
 export const metadata: Metadata = {
   title: 'Luz del Ermitaño Interior',
@@ -25,6 +26,7 @@ export default function RootLayout({
       )}>
         <AuthProvider>
           <AnimatedBackgroundStars />
+          <BackgroundAudioPlayer /> {/* Add BackgroundAudioPlayer here */}
           <Header /> {/* Add the Header here */}
           <main className="flex-grow flex flex-col">
             {children}
