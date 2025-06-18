@@ -48,25 +48,38 @@ const IntegrationClient: React.FC = () => {
   }, [toast]);
 
   const handleSaveReading = async () => {
+    setIsSaving(true); // Set saving state early
+
     if (!user) {
       toast({ 
         title: "Acción Requerida", 
         description: "Debes iniciar sesión para guardar tu lectura.", 
         variant: "destructive" 
       });
-      router.push('/auth'); // Redirect to login if not authenticated
+      router.push('/auth');
+      setIsSaving(false);
+      return;
+    }
+
+    if (typeof user.uid !== 'string' || user.uid.trim() === '') {
+      toast({ 
+        title: "Error de Autenticación", 
+        description: "No se pudo obtener tu identificación. Por favor, intenta iniciar sesión de nuevo.", 
+        variant: "destructive" 
+      });
+      setIsSaving(false);
       return;
     }
 
     if (!currentReading) {
       toast({ title: "Error", description: "No hay datos de lectura para guardar.", variant: "destructive" });
+      setIsSaving(false);
       return;
     }
 
-    setIsSaving(true);
     try {
       await addDoc(collection(db, "tarotReadings"), {
-        userId: user.uid, // Save the user's ID
+        userId: user.uid,
         query: currentQuery,
         numCards: currentReading.cards.length,
         interpretation: currentReading.interpretation,
@@ -83,10 +96,6 @@ const IntegrationClient: React.FC = () => {
         title: "Lectura Guardada",
         description: "Tu viaje místico ha sido atesorado en tu cuenta.",
       });
-      // Optionally clear localStorage after saving if it's tied to a session
-      // localStorage.removeItem('currentTarotReading');
-      // localStorage.removeItem('currentTarotQuery');
-      // localStorage.removeItem('currentTarotAudio');
     } catch (e) {
       console.error("Error adding document: ", e);
       toast({
@@ -160,7 +169,7 @@ const IntegrationClient: React.FC = () => {
           onClick={handleSaveReading} 
           variant="outline" 
           className="text-md" 
-          disabled={!currentReading || !user || isSaving}
+          disabled={!currentReading || !user || isSaving || authLoading} // Added authLoading to disabled check
         >
           {isSaving ? <Save className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
           {isSaving ? "Guardando..." : "Guardar Lectura"}

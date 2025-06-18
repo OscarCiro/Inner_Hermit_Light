@@ -36,18 +36,27 @@ const UserReadingsClient: React.FC = () => {
 
   useEffect(() => {
     if (authLoading) {
+      // Still waiting for authentication state to resolve
+      // setLoadingReadings(true) is already default, so no change needed here
       return; 
     }
 
     if (!user) {
+      // Auth loaded, but no user is signed in
       setLoadingReadings(false);
-      // Optional: Could redirect to login or show a message
-      // For now, it will show "No has iniciado sesión" message if authLoading is false and no user
+      // Message to log in will be shown by the component's render logic
+      return;
+    }
+    
+    if (typeof user.uid !== 'string' || user.uid.trim() === '') {
+      console.error("User UID is invalid for fetching readings.");
+      setError("No se pudo verificar tu identidad para cargar las lecturas.");
+      setLoadingReadings(false);
       return;
     }
 
     const fetchReadings = async () => {
-      setLoadingReadings(true);
+      setLoadingReadings(true); // Set loading true at the start of fetch
       setError(null);
       try {
         const q = firestoreQuery(
@@ -63,7 +72,7 @@ const UserReadingsClient: React.FC = () => {
             query: data.query || "",
             interpretation: data.interpretation,
             cards: data.cards,
-            createdAt: (data.createdAt as Timestamp).toDate(), // Convert Timestamp to Date
+            createdAt: (data.createdAt as Timestamp).toDate(),
             numCards: data.numCards,
             audioDataUri: data.audioDataUri,
           } as PastReading;
@@ -78,7 +87,7 @@ const UserReadingsClient: React.FC = () => {
     };
 
     fetchReadings();
-  }, [user, authLoading]);
+  }, [user, authLoading]); // Dependencies
 
   if (authLoading || loadingReadings) {
     return (
@@ -89,7 +98,7 @@ const UserReadingsClient: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!user) { // This check is after authLoading is false
     return (
       <div className="text-center p-6 bg-card rounded-lg shadow-md border border-input w-full">
         <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-4" />
