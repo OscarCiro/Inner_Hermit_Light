@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -35,7 +36,7 @@ const BackgroundAudioPlayer: React.FC = () => {
   }, []);
 
   return (
-    <audio ref={audioRef} src="/mystic_background.mp3" loop playsInline className="hidden">
+    <audio ref={audioRef} src="/audio/mystic_background.mp3" loop playsInline className="hidden">
       Tu navegador no soporta el elemento de audio.
     </audio>
   );
