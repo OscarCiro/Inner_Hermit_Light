@@ -6,7 +6,7 @@ import { AnimatedBackgroundStars } from '@/components/layout/AnimatedBackgroundS
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/context/AuthContext';
 import Header from '@/components/layout/Header'; // Import the Header
-import BackgroundAudioPlayer from '@/components/layout/BackgroundAudioPlayer'; // Import BackgroundAudioPlayer
+import { AudioProvider } from '@/context/AudioContext'; // Import AudioProvider
 
 export const metadata: Metadata = {
   title: 'Luz del Ermitaño Interior',
@@ -25,13 +25,15 @@ export default function RootLayout({
         "min-h-screen flex flex-col"
       )}>
         <AuthProvider>
-          <AnimatedBackgroundStars />
-          <BackgroundAudioPlayer /> {/* Add BackgroundAudioPlayer here */}
-          <Header /> {/* Add the Header here */}
-          <main className="flex-grow flex flex-col">
-            {children}
-          </main>
-          <Toaster />
+          <AudioProvider src="/audio/mystic_background.mp3" initialVolume={0.3} loop={true}>
+            <AnimatedBackgroundStars />
+            {/* BackgroundAudioPlayer is now managed by AudioProvider */}
+            <Header /> {/* Add the Header here */}
+            <main className="flex-grow flex flex-col">
+              {children}
+            </main>
+            <Toaster />
+          </AudioProvider>
         </AuthProvider>
       </body>
     </html>
