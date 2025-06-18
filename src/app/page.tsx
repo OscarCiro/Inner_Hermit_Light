@@ -1,19 +1,26 @@
+
 "use client";
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/layout/PageWrapper';
 import { HermitIllustration } from '@/components/tarot/HermitIllustration';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function WelcomePage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
-  const getLinkHref = () => {
-    if (loading) return "#"; // Prevent navigation during load
-    if (!user) return "/auth";
-    return "/consulta";
+  const handleStartReading = () => {
+    if (authLoading) {
+      return; // Do nothing if auth state is still loading
+    }
+    if (user) {
+      router.push('/consulta');
+    } else {
+      router.push('/auth');
+    }
   };
 
   return (
@@ -38,20 +45,19 @@ export default function WelcomePage() {
         </p>
       </section>
 
-      <Link href={getLinkHref()} passHref>
-        <Button 
-          size="lg" 
-          className="text-lg shadow-lg hover:shadow-primary/50 transition-shadow duration-300"
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          ) : (
-            <Sparkles className="mr-2 h-5 w-5" />
-          )}
-          {loading ? "Cargando..." : "Iniciar Lectura"}
-        </Button>
-      </Link>
+      <Button 
+        size="lg" 
+        className="text-lg shadow-lg hover:shadow-primary/50 transition-shadow duration-300"
+        onClick={handleStartReading}
+        disabled={authLoading}
+      >
+        {authLoading ? (
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        ) : (
+          <Sparkles className="mr-2 h-5 w-5" />
+        )}
+        {authLoading ? "Verificando..." : "Iniciar Lectura"}
+      </Button>
     </PageWrapper>
   );
 }
