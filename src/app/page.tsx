@@ -1,10 +1,21 @@
+"use client";
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/layout/PageWrapper';
 import { HermitIllustration } from '@/components/tarot/HermitIllustration';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function WelcomePage() {
+  const { user, loading } = useAuth();
+
+  const getLinkHref = () => {
+    if (loading) return "#"; // Prevent navigation during load
+    if (!user) return "/auth";
+    return "/consulta";
+  };
+
   return (
     <PageWrapper className="justify-center">
       <header className="mb-8">
@@ -27,10 +38,18 @@ export default function WelcomePage() {
         </p>
       </section>
 
-      <Link href="/consulta" passHref>
-        <Button size="lg" className="text-lg shadow-lg hover:shadow-primary/50 transition-shadow duration-300">
-          <Sparkles className="mr-2 h-5 w-5" />
-          Iniciar Lectura
+      <Link href={getLinkHref()} passHref>
+        <Button 
+          size="lg" 
+          className="text-lg shadow-lg hover:shadow-primary/50 transition-shadow duration-300"
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <Sparkles className="mr-2 h-5 w-5" />
+          )}
+          {loading ? "Cargando..." : "Iniciar Lectura"}
         </Button>
       </Link>
     </PageWrapper>
