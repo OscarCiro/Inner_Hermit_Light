@@ -8,8 +8,10 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  GoogleAuthProvider, // Import GoogleAuthProvider
-  signInWithPopup     // Import signInWithPopup
+  GoogleAuthProvider,
+  signInWithPopup,
+  sendEmailVerification, // Importar sendEmailVerification
+  sendPasswordResetEmail // Importar sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '@/lib/firebaseConfig';
 import { useRouter } from 'next/navigation';
@@ -19,8 +21,9 @@ interface AuthContextType {
   loading: boolean;
   signUpWithEmail: (email: string, pass: string) => Promise<void>;
   logInWithEmail: (email: string, pass: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>; // Add signInWithGoogle
+  signInWithGoogle: () => Promise<void>;
   logOut: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>; // Añadir sendPasswordReset
   authError: string | null;
   setAuthError: (error: string | null) => void;
 }
@@ -38,7 +41,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(currentUser);
       setLoading(false);
       if (currentUser) {
-        // Check if current route is /auth, if so, redirect to home
         if (window.location.pathname === '/auth') {
           router.push('/');
         }
@@ -51,11 +53,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAuthError(null);
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, pass);
-      // router.push('/'); // Redirect handled by onAuthStateChanged
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      if (userCredential.user) {
+        await sendEmailVerification(userCredential.user);
+        // La notificación al usuario se hará desde el componente AuthForm
+      }
     } catch (error: any) {
       setAuthError(error.message);
       console.error("Error signing up:", error);
+      throw error; // Re-lanzar para que el componente pueda manejarlo si es necesario
     } finally {
       setLoading(false);
     }
@@ -66,10 +72,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // router.push('/'); // Redirect handled by onAuthStateChanged
     } catch (error: any) {
       setAuthError(error.message);
       console.error("Error logging in:", error);
+      throw error; 
     } finally {
       setLoading(false);
     }
@@ -81,10 +87,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // router.push('/'); // Redirect handled by onAuthStateChanged
     } catch (error: any) {
       setAuthError(error.message);
       console.error("Error signing in with Google:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    setAuthError(null);
+    setLoading(true); // Reutilizar loading, o crear uno específico si hay conflictos de UI
+    try {
+      await sendPasswordResetEmail(auth, email);
+      // La notificación al usuario se hará desde el componente AuthForm
+    } catch (error: any) {
+      setAuthError(error.message);
+      console.error("Error sending password reset email:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -94,7 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signOut(auth);
-      router.push('/'); // Redirect to home after logout
+      router.push('/');
     } catch (error: any) {
       setAuthError(error.message);
       console.error("Error logging out:", error);
@@ -108,8 +129,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loading,
     signUpWithEmail,
     logInWithEmail,
-    signInWithGoogle, // Expose signInWithGoogle
+    signInWithGoogle,
     logOut,
+    sendPasswordReset, // Exponer la nueva función
     authError,
     setAuthError
   };
