@@ -40,72 +40,112 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({
   initialVolume = 0.3,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true); // Intentar reproducir por defecto
+  const [isPlaying, setIsPlaying] = useState(true); // Intenta reproducir por defecto
   const [volume, setVolume] = useState(initialVolume);
   const [isMuted, setIsMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
-  const [autoplayAttempted, setAutoplayAttempted] = useState(false); 
 
+  // Effect for handling user interaction to unlock audio
   useEffect(() => {
     const handleInteraction = () => {
-      setUserInteracted(true);
+      if (!userInteracted) {
+        setUserInteracted(true);
+        // If audio was meant to play but was paused (e.g., autoplay blocked), try playing now
+        if (audioRef.current && audioRef.current.paused && isPlaying && audioLoaded) {
+          audioRef.current.play().catch(e => {
+            console.warn("Play on interaction failed:", e);
+            if(audioRef.current && audioRef.current.paused) setIsPlaying(false); // Sync state if still fails
+          });
+        }
+      }
     };
+
     window.addEventListener('click', handleInteraction, { once: true });
     window.addEventListener('keydown', handleInteraction, { once: true });
+
     return () => {
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
     };
-  }, []);
+  }, [userInteracted, isPlaying, audioLoaded]); // Dependencies for the retry logic
 
+  // Effect for initializing audio element and event listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setAudioLoaded(true);
+    };
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleEnded = () => {
+      if (!loop) { // HTML5 audio handles loop=true automatically
+        setIsPlaying(false);
+      }
+    };
+    const handlePlayEvent = () => {
+      if (!isPlaying) setIsPlaying(true); // Sync React state if audio plays (e.g. via loop)
+    };
+    const handlePauseEvent = () => {
+      if (isPlaying) setIsPlaying(false); // Sync React state if audio pauses
+    };
+    
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlayEvent);
+    audio.addEventListener('pause', handlePauseEvent);
+
+    // Explicitly load the audio source. Crucial for some browsers/scenarios.
+    if (audio.currentSrc !== src || audio.readyState === HTMLMediaElement.HAVE_NOTHING) {
+        audio.load();
+    }
+    
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlayEvent);
+      audio.removeEventListener('pause', handlePauseEvent);
+    };
+  }, [src, loop]); // isPlaying removed from here as it could cause loop with onPlay/onPause handlers
+
+  // Effect for controlling playback based on React state
   useEffect(() => {
     const audioElement = audioRef.current;
-    if (audioElement && audioLoaded) {
-      audioElement.volume = isMuted ? 0 : volume;
-      audioElement.loop = loop;
+    if (!audioElement || !audioLoaded) return;
 
-      if (isPlaying) {
-        // Permitir reproducción si el usuario interactuó O si es el primer intento de autoplay
-        if (userInteracted || !autoplayAttempted) { 
-          audioElement.play()
-            .then(() => {
-              if (!userInteracted && !autoplayAttempted) {
-                 // Si el autoplay tuvo éxito sin interacción previa
-                 setUserInteracted(true); // Tratar autoplay exitoso como interacción
-              }
-            })
-            .catch(error => {
-              console.warn("La reproducción de audio falló:", error);
-              // Si la reproducción falla (ej. autoplay prevenido), actualiza isPlaying a false
-              if (!userInteracted && !autoplayAttempted) { // Solo si fue un intento de autoplay no interactuado
-                setIsPlaying(false);
-              } else if (userInteracted && audioElement.paused) {
-                // Si el usuario intentó reproducir manualmente y falló, refleja el estado pausado
-                setIsPlaying(false);
-              }
-            });
-          if (!autoplayAttempted) {
-            setAutoplayAttempted(true);
+    audioElement.volume = isMuted ? 0 : volume;
+    audioElement.loop = loop;
+
+    if (isPlaying) {
+      const playPromise = audioElement.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.warn("Audio playback failed (possibly due to autoplay policy):", error);
+          // If play fails, update state to reflect it's paused.
+          if (audioElement.paused) {
+            setIsPlaying(false);
           }
-        }
-      } else {
-        audioElement.pause();
+        });
       }
+    } else {
+      audioElement.pause();
     }
-  }, [isPlaying, userInteracted, audioLoaded, volume, isMuted, loop, autoplayAttempted]);
+  }, [isPlaying, audioLoaded, volume, isMuted, loop]);
 
 
   const togglePlayPause = useCallback(() => {
-    if (!audioLoaded && audioRef.current) {
-      audioRef.current.load(); 
+    if (!audioLoaded && audioRef.current && audioRef.current.readyState === HTMLMediaElement.HAVE_NOTHING) {
+        audioRef.current.load(); // Attempt to load if not loaded at all
     }
-    setIsPlaying(prev => !prev);
+    setIsPlaying(prevIsPlaying => !prevIsPlaying);
     if (!userInteracted) {
-      setUserInteracted(true); 
-      setAutoplayAttempted(true); // Cualquier control manual supera el intento de autoplay
+      setUserInteracted(true);
     }
   }, [audioLoaded, userInteracted]);
 
@@ -119,7 +159,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({
   }, [isMuted, userInteracted]);
 
   const toggleMute = useCallback(() => {
-    setIsMuted(prev => !prev);
+    setIsMuted(prevIsMuted => !prevIsMuted);
     if (!userInteracted) setUserInteracted(true);
   }, [userInteracted]);
 
@@ -129,50 +169,6 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({
     }
     if (!userInteracted) setUserInteracted(true);
   }, [duration, audioLoaded, userInteracted]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setAudioLoaded(true);
-      // La lógica de autoplay ahora está principalmente en el useEffect principal
-    };
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleEnded = () => {
-      // Si HTML5 loop es true, se encarga automáticamente.
-      // Si loop es false en props y el audio termina, isPlaying debería ser false.
-      if (!loop) { 
-        setIsPlaying(false);
-      }
-    };
-    const handleAudioPlay = () => {
-        // Sincronizar estado si es reproducido externamente o por loop HTML5
-        if (!isPlaying && audio.loop && !audio.paused) setIsPlaying(true);
-    };
-    const handleAudioPause = () => {
-        // Sincronizar estado si es pausado externamente
-        if (isPlaying && audio.paused) setIsPlaying(false);
-    };
-
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('play', handleAudioPlay);
-    audio.addEventListener('pause', handleAudioPause);
-    
-    // Reiniciar autoplayAttempted si cambia el src
-    setAutoplayAttempted(false); 
-
-    return () => {
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('play', handleAudioPlay);
-      audio.removeEventListener('pause', handleAudioPause);
-    };
-  }, [src, loop]); // loop es dependencia para el comportamiento del loop HTML5
 
   return (
     <AudioContext.Provider
@@ -189,8 +185,10 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({
         seek,
       }}
     >
-      <audio ref={audioRef} src={src} playsInline className="hidden" />
+      {/* Ensure the key changes if src changes to force re-creation of the audio element if needed */}
+      <audio ref={audioRef} src={src} playsInline className="hidden" key={src} />
       {children}
     </AudioContext.Provider>
   );
 };
+
