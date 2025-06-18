@@ -2,19 +2,25 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+// import { getAnalytics } from "firebase/analytics"; // Removido ya que no se usa actualmente
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAQVCC5B0hCgwVPND1cuRQeQPGKhWNJHPM", // Asegúrate de que esta sea tu API Key real
+  authDomain: "inner-hermit-light.firebaseapp.com",
+  // databaseURL: "https://inner-hermit-light-default-rtdb.firebaseio.com", // No es necesario para Firestore
+  projectId: "inner-hermit-light",
+  storageBucket: "inner-hermit-light.firebasestorage.app",
+  messagingSenderId: "291865552757",
+  appId: "1:291865552757:web:7b665005104e8a35d3153c",
+  // measurementId: "G-KV9PN24Z3Q" // Removido ya que getAnalytics no se usa actualmente
 };
 
-// Inicializar Firebase
+// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 const auth = getAuth(app);
+// const analytics = getAnalytics(app); // Removido
 
 export { db, auth };
