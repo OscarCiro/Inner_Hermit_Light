@@ -1,3 +1,4 @@
+
 // src/lib/firebaseConfig.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
@@ -7,7 +8,7 @@ import { getAuth } from 'firebase/auth';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAQVCC5B0hCgwVPND1cuRQeQPGKhWNJHPM", // Asegúrate de que esta sea tu API Key real y válida
+  apiKey: "AIzaSyB6wIvf_BSVprxt3svhcksfLAMFHz3t3II", // Asegúrate de que esta sea tu API Key real y válida
   authDomain: "inner-hermit-light.firebaseapp.com",
   // databaseURL: "https://inner-hermit-light-default-rtdb.firebaseio.com", // No es necesario para Firestore si solo usas Firestore
   projectId: "inner-hermit-light",
