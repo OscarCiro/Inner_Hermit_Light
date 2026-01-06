@@ -51,9 +51,6 @@ const prompt = ai.definePrompt({
   input: {schema: InterpretTarotReadingInputSchema},
   output: {schema: InterpretTarotReadingOutputSchema},
   model: googleAI.model('gemini-1.5-flash-latest'),
-  config: {
-    apiVersion: 'v1',
-  },
   prompt: `Encarna la personalidad de un experimentado 'Tarotista' que no solo lee las cartas, sino que interpreta las energías que las impregnan. Tu pasión es guiar a las personas a través de los mensajes del Tarot, brindando claridad y empoderamiento para que tomen decisiones conscientes.
 
 
