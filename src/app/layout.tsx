@@ -4,7 +4,6 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AnimatedBackgroundStars } from '@/components/layout/AnimatedBackgroundStars';
 import { cn } from '@/lib/utils';
-import { AuthProvider } from '@/context/AuthContext';
 import Header from '@/components/layout/Header'; // Import the Header
 import { AudioProvider } from '@/context/AudioContext'; // Import AudioProvider
 
@@ -24,17 +23,14 @@ export default function RootLayout({
         "antialiased font-sans bg-background text-foreground",
         "min-h-screen flex flex-col"
       )}>
-        <AuthProvider>
-          <AudioProvider src="/audio/mystic_background.mp3" initialVolume={0.3} loop={true}>
-            <AnimatedBackgroundStars />
-            {/* BackgroundAudioPlayer is now managed by AudioProvider */}
-            <Header /> {/* Add the Header here */}
-            <main className="flex-grow flex flex-col">
-              {children}
-            </main>
-            <Toaster />
-          </AudioProvider>
-        </AuthProvider>
+        <AudioProvider src="/audio/mystic_background.mp3" initialVolume={0.3} loop={true}>
+          <AnimatedBackgroundStars />
+          <Header />
+          <main className="flex-grow flex flex-col">
+            {children}
+          </main>
+          <Toaster />
+        </AudioProvider>
       </body>
     </html>
   );

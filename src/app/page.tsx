@@ -4,23 +4,14 @@
 import { Button } from '@/components/ui/button';
 import PageWrapper from '@/components/layout/PageWrapper';
 import { HermitIllustration } from '@/components/tarot/HermitIllustration';
-import { Sparkles, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function WelcomePage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const handleStartReading = () => {
-    if (authLoading) {
-      return; // Do nothing if auth state is still loading
-    }
-    if (user) {
-      router.push('/consulta');
-    } else {
-      router.push('/auth');
-    }
+    router.push('/consulta');
   };
 
   return (
@@ -49,14 +40,9 @@ export default function WelcomePage() {
         size="lg" 
         className="text-lg shadow-lg hover:shadow-primary/50 transition-shadow duration-300"
         onClick={handleStartReading}
-        disabled={authLoading}
       >
-        {authLoading ? (
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-        ) : (
-          <Sparkles className="mr-2 h-5 w-5" />
-        )}
-        {authLoading ? "Verificando..." : "Iniciar Lectura"}
+        <Sparkles className="mr-2 h-5 w-5" />
+        Iniciar Lectura
       </Button>
     </PageWrapper>
   );
