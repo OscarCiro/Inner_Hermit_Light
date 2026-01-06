@@ -51,6 +51,9 @@ const prompt = ai.definePrompt({
   input: {schema: InterpretTarotReadingInputSchema},
   output: {schema: InterpretTarotReadingOutputSchema},
   model: googleAI.model('gemini-1.5-flash-latest'),
+  config: {
+    apiVersion: 'v1',
+  },
   prompt: `Encarna la personalidad de un experimentado 'Tarotista' que no solo lee las cartas, sino que interpreta las energías que las impregnan. Tu pasión es guiar a las personas a través de los mensajes del Tarot, brindando claridad y empoderamiento para que tomen decisiones conscientes.
 
 
@@ -157,16 +160,39 @@ const interpretTarotReadingFlow = ai.defineFlow(
     outputSchema: InterpretTarotReadingOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (output && Array.isArray(output.cards) && output.cards.length === parseInt(input.numCards, 10)) {
-      const allCardsValid = output.cards.every(card => typeof card.isReversed === 'boolean' && typeof card.name === 'string' && card.name.length > 0);
-      if (allCardsValid) {
-        return output!;
+    try {
+      const {output} = await prompt(input);
+
+      if (!output || !Array.isArray(output.cards) || output.cards.length !== parseInt(input.numCards, 10)) {
+        console.error("AI output validation failed: Card count mismatch or invalid structure.", {
+          expected: input.numCards,
+          actual: output?.cards?.length,
+          output: output,
+        });
+        throw new Error("La respuesta de la IA no tiene el formato esperado.");
       }
-      console.error("AI output validation failed: one or more cards missing 'isReversed' property or 'name' is invalid.", { cardsOutput: output?.cards });
-    } else {
-      console.error("AI output validation failed or card count mismatch", { numCardsInput: input.numCards, cardsOutput: output?.cards?.length });
+
+      const allCardsValid = output.cards.every(card =>
+        typeof card.name === 'string' &&
+        card.name.length > 0 &&
+        typeof card.position === 'string' &&
+        typeof card.isReversed === 'boolean'
+      );
+
+      if (!allCardsValid) {
+        console.error("AI output validation failed: One or more cards have invalid properties.", { cards: output.cards });
+        throw new Error("Una o más cartas generadas por la IA tienen datos no válidos.");
+      }
+
+      return output;
+
+    } catch (error: any) {
+      console.error("________________ERROR in interpretTarotReadingFlow________________");
+      console.error("Message:", error.message);
+      if (error.cause) console.error("Cause:", error.cause);
+      console.error("____________________________________________________________");
+      // Re-throw the error to be caught by the calling client component
+      throw new Error(`Error al generar la interpretación del tarot: ${error.message}`);
     }
-    return output || { interpretation: "Error en la generación de la lectura. No se pudo procesar la información de las cartas.", cards: [] };
   }
 );
