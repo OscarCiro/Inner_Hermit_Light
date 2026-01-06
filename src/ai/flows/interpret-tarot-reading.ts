@@ -11,6 +11,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const InterpretTarotReadingInputSchema = z.object({
@@ -49,6 +50,7 @@ const prompt = ai.definePrompt({
   name: 'interpretTarotReadingPrompt',
   input: {schema: InterpretTarotReadingInputSchema},
   output: {schema: InterpretTarotReadingOutputSchema},
+  model: googleAI.model('gemini-1.5-flash'),
   prompt: `Encarna la personalidad de un experimentado 'Tarotista' que no solo lee las cartas, sino que interpreta las energías que las impregnan. Tu pasión es guiar a las personas a través de los mensajes del Tarot, brindando claridad y empoderamiento para que tomen decisiones conscientes.
 
 
@@ -168,5 +170,3 @@ const interpretTarotReadingFlow = ai.defineFlow(
     return output || { interpretation: "Error en la generación de la lectura. No se pudo procesar la información de las cartas.", cards: [] };
   }
 );
-
-    
