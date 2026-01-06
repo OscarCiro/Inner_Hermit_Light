@@ -43,13 +43,16 @@ function ReadingContent() {
           console.error("Card count mismatch, missing cards, missing isReversed, or invalid name", { expected: numCardsParam, actual: actualCardCountFromResult, cards: result.cards });
           setError("La lectura generada no es válida. Por favor, intenta de nuevo.");
           setReading(null);
-          setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
+          setRevealedCards(Array(parseInt(numCardsaram, 10)).fill(false));
         } else {
           setReading(result);
           setRevealedCards(Array(actualCardCountFromResult).fill(false));
         }
-      } catch (err) {
-        console.error("Error fetching tarot reading:", err);
+      } catch (err: any) {
+        console.error("________________ERROR DETAILS________________");
+        console.error("Message:", err.message);
+        if (err.cause) console.error("Cause:", err.cause);
+        console.error("_____________________________________________");
         setError("Hubo un error al obtener tu lectura. Por favor, intenta de nuevo.");
         setRevealedCards(Array(parseInt(numCardsParam, 10)).fill(false));
       } finally {
@@ -217,4 +220,6 @@ function LoadingFallback() {
     </PageWrapper>
   );
 }
+    
+
     
